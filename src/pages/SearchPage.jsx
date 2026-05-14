@@ -6,7 +6,7 @@ import SearchCollectionCard from '../components/SearchCollectionCard'
 import { peekSearchOpenFlags, clearSearchOpenFlags } from '../searchFocusFlags'
 
 const TOKEN_KEY = 'moviesbox_token'
-const API_BASE = '/api'
+const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
 const SEARCH_DEBOUNCE_MS = 400
 
 function releaseTs(m) {

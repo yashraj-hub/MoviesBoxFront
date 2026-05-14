@@ -4,7 +4,7 @@ import Loader from '../components/Loader'
 import { Minus, Plus, Trash2 } from 'lucide-react'
 
 const TOKEN_KEY = 'moviesbox_token'
-const API_BASE = '/api'
+const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
 
 function sessionBrowserLabel(s) {
   const ua = (s && s.userAgent) || ''
