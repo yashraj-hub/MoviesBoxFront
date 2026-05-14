@@ -1,8 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { registerLogoutHandler } from '../utils/apiFetch'
+import { apiFetch, registerLogoutHandler } from '../utils/apiFetch'
 
 const TOKEN_KEY = 'moviesbox_token'
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace(/\/+$/, '')
 
 const AuthContext = createContext(null)
 
@@ -27,19 +26,19 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY)
     if (!token) { setUser(null); return }
-    fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => {
-        if (res.status === 401) { forceLogout(); return null }
-        return res.json()
+    apiFetch('auth/me')
+      .then(res => (res?.ok ? res.text() : null))
+      .then(text => {
+        if (!text) return
+        const data = JSON.parse(text)
+        setUser(data.user || null)
       })
-      .then(data => { if (data) setUser(data.user || null) })
       .catch(() => forceLogout())
   }, [forceLogout])
 
   const logout = async () => {
-    const token = localStorage.getItem(TOKEN_KEY)
     try {
-      await fetch(`${API_BASE}/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      await apiFetch('auth/logout', { method: 'POST' })
     } catch (_) {}
     forceLogout()
   }

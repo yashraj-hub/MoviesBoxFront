@@ -5,7 +5,7 @@ import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const TOKEN_KEY = 'moviesbox_token'
-const API_BASE = '/api'
+const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
 
 const collectSignupContext = () => {
   const nav = navigator
@@ -107,7 +107,8 @@ export default function AuthPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      const data = await res.json()
+      const text = await res.text()
+      const data = text ? JSON.parse(text) : {}
       if (!res.ok) throw new Error(data.message || 'Authentication failed')
       localStorage.setItem(TOKEN_KEY, data.token)
       setUser(data.user)
