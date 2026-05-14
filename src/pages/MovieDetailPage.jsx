@@ -369,24 +369,39 @@ export default function MovieDetailPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[200] bg-black flex flex-col"
           >
-            <div className="flex items-center gap-3 px-4 md:px-8 py-4 shrink-0">
-              <button onClick={() => setPlaying(false)} className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-colors">
-                <ChevronLeft className="w-4 h-4" /> Back
-              </button>
-              <div className="w-px h-4 bg-white/20" />
-              {movie.logoUrl
-                ? <img src={movie.logoUrl} alt={movie.title} className="h-6 w-auto object-contain max-w-[150px]" loading="lazy" />
-                : <span className="text-[13px] font-black uppercase tracking-widest text-white">{movie.title}</span>
+            {/* On portrait mobile: rotate the entire player 90deg */}
+            <style>{`
+              @media (max-width: 768px) and (orientation: portrait) {
+                .mbx-player-wrap {
+                  position: fixed;
+                  top: 0; left: 0;
+                  width: 100vh;
+                  height: 100vw;
+                  transform: rotate(90deg) translateX(0) translateY(-100%);
+                  transform-origin: top left;
+                }
               }
-            </div>
-            <div className="flex-1">
-              <iframe
-                src={`https://streamimdb.ru/embed/movie/${movie.imdbId}`}
-                className="w-full h-full"
-                allowFullScreen
-                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                style={{ border: 'none' }}
-              />
+            `}</style>
+            <div className="mbx-player-wrap fixed inset-0 z-[200] bg-black flex flex-col">
+              <div className="flex items-center gap-3 px-4 md:px-8 py-4 shrink-0">
+                <button onClick={() => setPlaying(false)} className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-colors">
+                  <ChevronLeft className="w-4 h-4" /> Back
+                </button>
+                <div className="w-px h-4 bg-white/20" />
+                {movie.logoUrl
+                  ? <img src={movie.logoUrl} alt={movie.title} className="h-6 w-auto object-contain max-w-[150px]" loading="lazy" />
+                  : <span className="text-[13px] font-black uppercase tracking-widest text-white">{movie.title}</span>
+                }
+              </div>
+              <div className="flex-1">
+                <iframe
+                  src={`https://streamimdb.ru/embed/movie/${movie.imdbId}`}
+                  className="w-full h-full"
+                  allowFullScreen
+                  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                  style={{ border: 'none' }}
+                />
+              </div>
             </div>
           </motion.div>
         )}
@@ -414,14 +429,7 @@ export default function MovieDetailPage() {
           {movie.imdbId && (
             <button
               type="button"
-              onClick={() => {
-                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-                if (isMobile) {
-                  window.open(`https://streamimdb.ru/embed/movie/${movie.imdbId}`, '_blank')
-                } else {
-                  setPlaying(true)
-                }
-              }}
+              onClick={() => setPlaying(true)}
               className="flex items-center justify-center bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-full w-10 h-10 shrink-0"
               aria-label="Play"
             >
