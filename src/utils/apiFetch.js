@@ -1,5 +1,5 @@
 const TOKEN_KEY = 'moviesbox_token'
-const API_BASE = import.meta.env.VITE_API_URL || 'https://moviesboxbackend.onrender.com/api'
+const API_BASE = 'https://moviesboxbackend.onrender.com/api'
 
 let _forceLogout = null
 
