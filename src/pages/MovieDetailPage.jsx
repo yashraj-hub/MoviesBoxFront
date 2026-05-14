@@ -384,7 +384,7 @@ export default function MovieDetailPage() {
                 src={`https://streamimdb.ru/embed/movie/${movie.imdbId}`}
                 className="w-full h-full"
                 allowFullScreen
-                allow="autoplay; encrypted-media"
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
                 style={{ border: 'none' }}
               />
             </div>
@@ -414,7 +414,14 @@ export default function MovieDetailPage() {
           {movie.imdbId && (
             <button
               type="button"
-              onClick={() => setPlaying(true)}
+              onClick={() => {
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+                if (isMobile) {
+                  window.open(`https://streamimdb.ru/embed/movie/${movie.imdbId}`, '_blank')
+                } else {
+                  setPlaying(true)
+                }
+              }}
               className="flex items-center justify-center bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-full w-10 h-10 shrink-0"
               aria-label="Play"
             >
