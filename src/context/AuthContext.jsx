@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { registerLogoutHandler } from '../utils/apiFetch'
 
 const TOKEN_KEY = 'moviesbox_token'
-const API_BASE = import.meta.env.VITE_API_URL || '/api'
+const API_BASE = import.meta.env.VITE_API_URL || 'https://moviesboxbackend.onrender.com/api'
 
 const AuthContext = createContext(null)
 
