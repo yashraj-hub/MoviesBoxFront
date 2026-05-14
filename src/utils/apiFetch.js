@@ -1,5 +1,5 @@
 const TOKEN_KEY = 'moviesbox_token'
-const API_BASE = 'https://moviesboxbackend.onrender.com/api'
+const API_BASE = '/api'
 
 let _forceLogout = null
 
