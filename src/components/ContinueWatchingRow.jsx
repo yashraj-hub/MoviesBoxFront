@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const TOKEN_KEY = 'moviesbox_token'
-const API_BASE = '/api'
+const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
 
 function ContinueWatchingCard({ movie }) {
   const navigate = useNavigate()

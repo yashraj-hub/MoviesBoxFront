@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import MovieCard from './MovieCard'
 
 const TOKEN_KEY = 'moviesbox_token'
-const API_BASE = '/api'
+const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
 
 export default function MovieRow({ title, endpoint, totalLabel }) {
   const [movies, setMovies] = useState([])

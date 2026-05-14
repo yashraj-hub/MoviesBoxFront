@@ -64,7 +64,7 @@ export default function SiteActiveTracker({ user }) {
       const token = localStorage.getItem('moviesbox_token')
       if (!token) return
 
-      const url = '/api/site-active/unified'
+      const url = `${(import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')}/site-active/unified`
       const config = {
         method: 'POST',
         headers: {
