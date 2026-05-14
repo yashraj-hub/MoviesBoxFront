@@ -228,6 +228,7 @@ export default function MovieDetailPage() {
   const [movie, setMovie] = useState(null)
   const [loading, setLoading] = useState(true)
   const [playing, setPlaying] = useState(false)
+  const [adBlockEnabled, setAdBlockEnabled] = useState(true)
   const [inMyList, setInMyList] = useState(false)
   const [myListBusy, setMyListBusy] = useState(false)
   const [related, setRelated] = useState([])
@@ -236,11 +237,28 @@ export default function MovieDetailPage() {
   const [relLoading, setRelLoading] = useState(false)
   const loaderRef = useRef(null)
 
+  // Block popups from iframe ads and refocus window
+  useEffect(() => {
+    if (!playing || !adBlockEnabled) return
+
+    const originalOpen = window.open
+    window.open = () => null
+
+    const onBlur = () => {
+      setTimeout(() => window.focus(), 100)
+    }
+    window.addEventListener('blur', onBlur)
+
+    return () => {
+      window.open = originalOpen
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [playing, adBlockEnabled])
+
   useEffect(() => {
     setLoading(true)
     setMovie(null)
     setRelated([])
-    setRelPage(1)
     window.scrollTo(0, 0)
     apiFetch(`movies/${tmdbId}`)
       .then(r => r?.json())
@@ -369,7 +387,6 @@ export default function MovieDetailPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[200] bg-black flex flex-col"
           >
-            {/* On portrait mobile: rotate the entire player 90deg */}
             <style>{`
               @media (max-width: 768px) and (orientation: portrait) {
                 .mbx-player-wrap {
@@ -392,14 +409,40 @@ export default function MovieDetailPage() {
                   ? <img src={movie.logoUrl} alt={movie.title} className="h-6 w-auto object-contain max-w-[150px]" loading="lazy" />
                   : <span className="text-[13px] font-black uppercase tracking-widest text-white">{movie.title}</span>
                 }
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Ad Block</span>
+                  <button
+                    type="button"
+                    onClick={() => setAdBlockEnabled(v => !v)}
+                    className={`relative w-10 h-5 rounded-full border transition-all ${
+                      adBlockEnabled ? 'bg-green-500/20 border-green-500/40' : 'bg-white/10 border-white/20'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                      adBlockEnabled ? 'translate-x-5' : ''
+                    }`} />
+                  </button>
+                  <span className={`text-[9px] font-black uppercase tracking-widest ${
+                    adBlockEnabled ? 'text-green-400' : 'text-gray-600'
+                  }`}>{adBlockEnabled ? 'ON' : 'OFF'}</span>
+                </div>
               </div>
-              <div className="flex-1">
+              <div className="relative flex-1">
                 <iframe
                   src={`https://streamimdb.ru/embed/movie/${movie.imdbId}`}
                   className="w-full h-full"
                   allowFullScreen
                   allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
                   style={{ border: 'none' }}
+                />
+                {/* Transparent overlay to intercept ad clicks */}
+                <div
+                  className="absolute inset-0 z-10"
+                  style={{ pointerEvents: 'none' }}
+                  onClickCapture={(e) => {
+                    e.stopPropagation()
+                    window.focus()
+                  }}
                 />
               </div>
             </div>
