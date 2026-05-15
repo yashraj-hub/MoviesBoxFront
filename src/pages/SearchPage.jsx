@@ -192,6 +192,16 @@ export default function SearchPage() {
 
   const hasCollections = collectionGroups.length > 0
 
+  const sortedCollectionGroups = useMemo(() => {
+    if (!hasCollections) return collectionGroups
+    return [...collectionGroups].sort((a, b) => {
+      const ta = releaseTs(a.movies?.[0])
+      const tb = releaseTs(b.movies?.[0])
+      if (ta != null && tb != null && ta !== tb) return newestFirst ? tb - ta : ta - tb
+      return 0
+    })
+  }, [collectionGroups, hasCollections, newestFirst])
+
   const yearSections = useMemo(() => {
     const base = hasCollections ? otherResults : results
     if (!base.length) return []
@@ -200,9 +210,8 @@ export default function SearchPage() {
   }, [hasCollections, otherResults, results, newestFirst])
 
   const gridClass = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4'
-  const railClass = 'flex gap-3 overflow-x-auto pb-3 pt-1 scroll-smooth snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20'
 
-  const showToggle = results.length > 0 && (!hasCollections || otherResults.length > 0)
+  const showToggle = results.length > 0
 
   return (
     <div className="pt-24 px-4 md:px-12 pb-16">
@@ -272,26 +281,21 @@ export default function SearchPage() {
                 <div className="space-y-12 md:space-y-14">
                   {hasCollections && (
                     <div className="space-y-10 md:space-y-12">
-                      {collectionGroups.map((g) => (
+                      {sortedCollectionGroups.map((g) => (
                         <section key={g.collectionId}>
-                          <div className="mb-4 flex items-start gap-3 border-b border-white/10 pb-3">
-                            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-[10px] font-black text-black shadow-[0_0_20px_rgba(234,179,8,0.35)]">
-                              M
-                            </div>
+                          <div className="mb-4 flex items-center gap-3 border-b border-white/10 pb-3">
                             <div className="min-w-0 flex-1">
                               <h2 className="text-sm font-black uppercase tracking-wide text-white sm:text-base md:text-lg">
                                 {g.name}
                               </h2>
                               <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-gray-500">
-                                Official collection
-                                {g.movies?.length ? ` · ${g.movies.length} in search` : ''}
+                                {g.movies?.length ? `${g.movies.length} in search` : ''}
                                 {g.franchiseTotalParts ? ` · ${g.franchiseTotalParts} in franchise` : ''}
-                                {' · '}
-                                Release order
+                                {' · release order'}
                               </p>
                             </div>
                           </div>
-                          <div className={railClass}>
+                          <div className={gridClass}>
                             {g.movies?.map((m) => (
                               <SearchCollectionCard
                                 key={m.tmdbId || m.id}

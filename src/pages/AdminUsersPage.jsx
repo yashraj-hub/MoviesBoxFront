@@ -99,10 +99,17 @@ function UserCard({ user, selected, onClick }) {
         selected ? 'border-yellow-400/40 bg-yellow-400/5' : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]'
       }`}
     >
-      <div className="min-w-0 flex-1">
-        <div className="text-white font-black uppercase tracking-widest truncate text-sm md:text-base">{user.fullName}</div>
-        <div className="text-gray-500 text-xs md:text-sm mt-1 truncate">{user.email}</div>
-        <div className="text-gray-600 text-[10px] md:text-xs font-mono mt-0.5 truncate">{user.userId}</div>
+      <div className="min-w-0 flex-1 flex items-center gap-4">
+        <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center shrink-0">
+          {user.avatar
+            ? <img src={user.avatar} alt={user.fullName} className="w-full h-full object-cover" loading="lazy" />
+            : <span className="text-xs font-black text-gray-500">{(user.fullName || '?')[0].toUpperCase()}</span>}
+        </div>
+        <div className="min-w-0">
+          <div className="text-white font-black uppercase tracking-widest truncate text-sm md:text-base">{user.fullName}</div>
+          <div className="text-gray-500 text-xs md:text-sm mt-1 truncate">{user.email}</div>
+          <div className="text-gray-600 text-[10px] md:text-xs font-mono mt-0.5 truncate">{user.userId}</div>
+        </div>
       </div>
       <div className="flex flex-wrap gap-2 shrink-0 md:justify-end">
         <Badge tone={user.isActive ? 'green' : 'red'}>{user.isActive ? 'Active' : 'Inactive'}</Badge>
@@ -198,7 +205,7 @@ function LiveOnlinePanel({ items, users, minutes, onClose, onRowClick }) {
   )
 }
 
-function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateStatus, onUpdateTracking, onDelete }) {
+function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateStatus, onUpdateTracking, onDelete, onNavigateMovie }) {
   const [user, setUser] = useState(initialUser)
   const [myList, setMyList] = useState([])
   const [myListLoading, setMyListLoading] = useState(false)
@@ -410,6 +417,11 @@ function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateSt
           <div className="flex items-start justify-between gap-4 max-w-7xl mx-auto">
             <div className="min-w-0">
               <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20 bg-white/5 flex items-center justify-center shrink-0">
+                  {user.avatar
+                    ? <img src={user.avatar} alt={user.fullName} className="w-full h-full object-cover" />
+                    : <span className="text-sm font-black text-gray-400">{(user.fullName || '?')[0].toUpperCase()}</span>}
+                </div>
                 <h2 className="font-heading text-2xl md:text-3xl text-white truncate">{user.fullName}</h2>
                 {user.isActive ? (
                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)] animate-pulse" title="Active Account" />
@@ -560,9 +572,13 @@ function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateSt
             ) : myList.length ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                 {myList.slice(0, 12).map((m) => (
-                  <div key={m.tmdbId} className="rounded-lg overflow-hidden border border-white/10 bg-white/5">
+                  <div
+                    key={m.tmdbId}
+                    onClick={() => onNavigateMovie(m.tmdbId)}
+                    className="rounded-lg overflow-hidden border border-white/10 bg-white/5 cursor-pointer hover:border-yellow-400/40 transition-all"
+                  >
                     {m.posterUrl ? (
-                      <img src={m.posterUrl} alt={m.title} className="w-full aspect-[2/3] object-cover" loading="lazy" />
+                      <img src={m.posterUrl} alt={m.title} className="w-full aspect-[2/3] object-cover hover:scale-105 transition-transform duration-300" loading="lazy" />
                     ) : (
                       <div className="w-full aspect-[2/3] bg-white/5" />
                     )}
@@ -689,7 +705,7 @@ function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateSt
                                 const watchSeconds = Math.max(0, Math.round(Number(m.watchSeconds) || 0))
                                 const progress = Math.min(95, Math.max(10, (watchSeconds / 3600) * 100))
                                 return (
-                                  <div key={m.tmdbId} className="group cursor-pointer shrink-0 w-[200px] md:w-[240px]">
+                                  <div key={m.tmdbId} onClick={() => onNavigateMovie(m.tmdbId)} className="group cursor-pointer shrink-0 w-[200px] md:w-[240px]">
                                     <div className="relative aspect-[16/9] rounded-lg overflow-hidden bg-white/5 border border-white/10 group-hover:border-yellow-400/40 transition-all duration-300">
                                       {img ? (
                                         <img
@@ -947,6 +963,7 @@ export default function AdminUsersPage() {
           onUpdateStatus={updateStatus}
           onUpdateTracking={updateTracking}
           onDelete={deleteUser}
+          onNavigateMovie={(tmdbId) => { setSelectedUserId(null); navigate(`/movie/${tmdbId}`) }}
         />
       )}
     </div>

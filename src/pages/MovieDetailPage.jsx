@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../utils/apiFetch'
 import { useAuth } from '../context/AuthContext'
 import ProductionLogo from '../components/ProductionLogo'
+import MovieCard from '../components/MovieCard'
 
 const CARDS_PER_ROW = 5
 
@@ -53,25 +54,6 @@ function CastCard({ person, credit }) {
       <p className="text-[11px] font-bold text-white leading-tight truncate">{person.name}</p>
       {person.character && <p className="text-[10px] text-gray-500 truncate mt-0.5">{person.character}</p>}
     </button>
-  )
-}
-
-function RelatedCard({ movie }) {
-  const navigate = useNavigate()
-  const year = movie.releaseDate?.slice(0, 4)
-  return (
-    <div onClick={() => navigate(`/movie/${movie.tmdbId}`)} className="group cursor-pointer">
-      <div className="relative rounded-xl overflow-hidden border border-white/10 bg-white/5 hover:border-yellow-400/40 transition-all duration-300">
-        {movie.posterUrl
-          ? <img src={movie.posterUrl} alt={movie.title} className="w-full aspect-[2/3] object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-          : <div className="w-full aspect-[2/3] bg-white/5" />
-        }
-      </div>
-      <div className="mt-2 px-1">
-        <p className="text-[12px] font-bold text-white truncate">{movie.title}</p>
-        {year && <p className="text-[11px] text-gray-500 mt-0.5">{year}</p>}
-      </div>
-    </div>
   )
 }
 
@@ -235,6 +217,8 @@ export default function MovieDetailPage() {
   const [relPage, setRelPage] = useState(1)
   const [relTotalPages, setRelTotalPages] = useState(1)
   const [relLoading, setRelLoading] = useState(false)
+  const [showCaptionHint, setShowCaptionHint] = useState(false)
+  const captionHintShownRef = useRef(false)
   const loaderRef = useRef(null)
 
   // Block popups from iframe ads and refocus window
@@ -537,7 +521,7 @@ export default function MovieDetailPage() {
           <div className="space-y-6">
             {relatedRows.map((row, i) => (
               <div key={i} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                {row.map(m => <RelatedCard key={m.tmdbId} movie={m} />)}
+                {row.map(m => <MovieCard key={m.tmdbId} movie={m} showTitle />)}
               </div>
             ))}
           </div>

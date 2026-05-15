@@ -25,9 +25,10 @@ export default function CustomCursor() {
         y: springY,
         translateX: '-50%',
         translateY: '-50%',
+        willChange: 'transform',
       }}
     >
-      <div className="w-8 h-8 rounded-full bg-white/20 border border-white/40 backdrop-blur-sm" />
+      <div className="w-8 h-8 rounded-full bg-white/20 border border-white/40" />
     </motion.div>
   )
 }

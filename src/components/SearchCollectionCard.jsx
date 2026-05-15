@@ -13,7 +13,7 @@ export default function SearchCollectionCard({ movie, partNumber }) {
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/movie/${id}`) }}
       onClick={() => navigate(`/movie/${id}`)}
-      className="w-[118px] sm:w-[132px] md:w-[142px] shrink-0 snap-start cursor-pointer group select-none"
+      className="cursor-pointer group select-none"
     >
       <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-lg transition-all duration-300 group-hover:border-yellow-400/50">
         {partNumber != null && (

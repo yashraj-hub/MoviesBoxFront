@@ -10,9 +10,12 @@ import {
   LogOut,
   Eye,
   EyeOff,
+  Check,
+  Pencil,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../utils/apiFetch'
+import { AVATARS } from '../config/avatars'
 
 function formatJoined(iso) {
   if (!iso) return '—'
@@ -41,6 +44,10 @@ export default function ProfilePage() {
   const [pwMsg, setPwMsg] = useState('')
   const [pwErr, setPwErr] = useState('')
 
+  const [selectedAvatar, setSelectedAvatar] = useState('')
+  const [avatarBusy, setAvatarBusy] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+
   const loadMyList = useCallback(() => {
     setListLoading(true)
     apiFetch('my-list')
@@ -57,6 +64,8 @@ export default function ProfilePage() {
         if (d?.user) {
           setProfile(d.user)
           setUser(d.user)
+          setSelectedAvatar(d.user.avatar || '')
+          setPickerOpen(!d.user.avatar)
         } else setLoadError('Could not load profile')
       })
       .catch(() => setLoadError('Could not load profile'))
@@ -67,6 +76,25 @@ export default function ProfilePage() {
   }, [loadMyList])
 
   const display = profile || user
+
+  const saveAvatar = async (url) => {
+    setSelectedAvatar(url)
+    setAvatarBusy(true)
+    try {
+      const r = await apiFetch('auth/avatar', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar: url }),
+      })
+      const data = r ? await r.json().catch(() => ({})) : {}
+      if (r?.ok && data.user) {
+        setProfile(data.user)
+        setUser(data.user)
+        setPickerOpen(false)
+      }
+    } catch {}
+    finally { setAvatarBusy(false) }
+  }
 
   const submitPassword = async (e) => {
     e.preventDefault()
@@ -132,6 +160,60 @@ export default function ProfilePage() {
 
       {display && (
         <div className="space-y-10 md:space-y-12">
+
+          {/* ── Avatar Picker ── */}
+          <div className="flex flex-col items-center gap-3 py-4">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPickerOpen(v => !v)}
+                className="w-24 h-24 rounded-full overflow-hidden border-2 border-yellow-400/50 bg-white/5 flex items-center justify-center shadow-[0_0_24px_rgba(250,204,21,0.15)] hover:border-yellow-400 hover:shadow-[0_0_32px_rgba(250,204,21,0.3)] transition-all"
+              >
+                {selectedAvatar
+                  ? <img src={selectedAvatar} alt="avatar" className="w-full h-full object-cover" />
+                  : <User className="w-9 h-9 text-gray-500" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(v => !v)}
+                className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center shadow-lg hover:bg-yellow-300 transition-colors"
+                title="Change avatar"
+              >
+                <Pencil className="w-3.5 h-3.5 text-black" />
+              </button>
+            </div>
+
+            {pickerOpen && (
+              <div className="mt-3 grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-11 gap-2.5 w-full">
+                {AVATARS.map((av) => {
+                  const active = selectedAvatar === av.url
+                  return (
+                    <button
+                      key={av.id}
+                      type="button"
+                      onClick={() => saveAvatar(av.url)}
+                      disabled={avatarBusy}
+                      title={av.id}
+                      className={`relative rounded-full overflow-hidden border-2 transition-all duration-200 aspect-square ${
+                        active
+                          ? 'border-yellow-400 scale-110 shadow-[0_0_14px_rgba(250,204,21,0.5)]'
+                          : 'border-white/10 hover:border-white/40 hover:scale-105'
+                      }`}
+                    >
+                      <img src={av.url} alt={av.id} className="w-full h-full object-cover" loading="lazy" />
+                      {active && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          <Check className="w-3 h-3 text-yellow-400" />
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ── Account + Password ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start">
             <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 md:p-6">
               <h2 className="text-sm md:text-base font-black uppercase tracking-[0.18em] text-yellow-400 mb-5">
@@ -240,6 +322,7 @@ export default function ProfilePage() {
             </section>
           </div>
 
+          {/* ── My List ── */}
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 md:p-6">
             <div className="flex flex-wrap items-end justify-between gap-3 mb-4 md:mb-5">
               <h2 className="text-sm md:text-base font-black uppercase tracking-[0.18em] text-yellow-400 flex items-center gap-2.5 m-0">

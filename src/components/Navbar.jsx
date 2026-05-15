@@ -262,9 +262,11 @@ const Navbar = ({ user, onLogout }) => {
           <div ref={profileRef} className="hidden lg:block relative">
             <button
               onClick={() => setProfileOpen(p => !p)}
-              className="w-8 h-8 rounded-full bg-white/10 border border-white/20 hover:border-white/40 flex items-center justify-center transition-all"
+              className="w-8 h-8 rounded-full overflow-hidden border border-white/20 hover:border-yellow-400/50 flex items-center justify-center transition-all"
             >
-              <User className="w-4 h-4 text-white" />
+              {user?.avatar
+                ? <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                : <User className="w-4 h-4 text-white" />}
             </button>
 
             <AnimatePresence>
@@ -280,10 +282,17 @@ const Navbar = ({ user, onLogout }) => {
                     <button
                       type="button"
                       onClick={() => { setProfileOpen(false); navigate('/profile') }}
-                      className="w-full text-left px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors"
+                      className="w-full text-left px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors flex items-center gap-3"
                     >
-                      <p className="text-[11px] font-black uppercase tracking-widest text-white truncate">{user.fullName}</p>
-                      <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                      <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20 bg-white/5 flex items-center justify-center shrink-0">
+                        {user?.avatar
+                          ? <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                          : <User className="w-3.5 h-3.5 text-gray-400" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black uppercase tracking-widest text-white truncate">{user.fullName}</p>
+                        <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                      </div>
                     </button>
                   )}
                   <button
@@ -354,9 +363,16 @@ const Navbar = ({ user, onLogout }) => {
 
               <div className="flex flex-col px-5 py-6 gap-1">
                 {user && (
-                  <div className="mb-4 pb-4 border-b border-white/10">
-                    <p className="text-xs font-black uppercase tracking-widest text-white">{user.fullName}</p>
-                    <p className="text-[10px] text-gray-500">{user.email}</p>
+                  <div className="mb-4 pb-4 border-b border-white/10 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full overflow-hidden border border-white/20 bg-white/5 flex items-center justify-center shrink-0">
+                      {user?.avatar
+                        ? <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                        : <User className="w-4 h-4 text-gray-400" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-black uppercase tracking-widest text-white truncate">{user.fullName}</p>
+                      <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                    </div>
                   </div>
                 )}
 

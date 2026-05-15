@@ -18,13 +18,13 @@ body {
   cursor: none;
   font-family: 'Plus Jakarta Sans', sans-serif;
   background-color: var(--bg-dark);
-  background-image: radial-gradient(circle, #ffffff0a 1px, transparent 1px);
-  background-size: 32px 32px;
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
 }
+
+
 
 h1, h2, h3, .font-heading {
   font-family: 'Bebas Neue', sans-serif;
