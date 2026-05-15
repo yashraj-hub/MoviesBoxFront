@@ -205,7 +205,7 @@ export default function AuthPage() {
                     exit={{ opacity: 0, height: 0 }}
                     className="space-y-2 overflow-hidden"
                   >
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-1 flex items-center gap-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1 flex items-center gap-2">
                       <User className="h-3.5 w-3.5 text-yellow-400" />
                       Full Name
                     </label>
@@ -218,7 +218,7 @@ export default function AuthPage() {
                         onChange={handleChange}
                         required
                         autoComplete="off"
-                        className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-5 text-sm text-white outline-none focus:border-yellow-400/50 focus:bg-white/[0.05] transition-all placeholder:text-gray-700"
+                        className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-5 text-sm text-white outline-none focus:border-yellow-400/50 focus:bg-white/[0.05] transition-all placeholder:text-gray-500"
                       />
                     </div>
                   </motion.div>
@@ -226,7 +226,7 @@ export default function AuthPage() {
               </AnimatePresence>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-1 flex items-center gap-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1 flex items-center gap-2">
                   <Mail className="h-3.5 w-3.5 text-yellow-400" />
                   {mode === 'login' ? 'Email or User ID' : 'Email Address'}
                 </label>
@@ -239,14 +239,14 @@ export default function AuthPage() {
                     onChange={handleChange}
                     required
                     autoComplete="off"
-                    className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-5 text-sm text-white outline-none focus:border-yellow-400/50 focus:bg-white/[0.05] transition-all placeholder:text-gray-700"
+                    className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-5 text-sm text-white outline-none focus:border-yellow-400/50 focus:bg-white/[0.05] transition-all placeholder:text-gray-500"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center px-1">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 flex items-center gap-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2">
                     <Lock className="h-3.5 w-3.5 text-yellow-400" />
                     Password
                   </label>
@@ -265,7 +265,7 @@ export default function AuthPage() {
                     onChange={handleChange}
                     required
                     autoComplete="new-password"
-                    className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-5 pr-12 text-sm text-white outline-none focus:border-yellow-400/50 focus:bg-white/[0.05] transition-all placeholder:text-gray-700"
+                    className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-5 pr-12 text-sm text-white outline-none focus:border-yellow-400/50 focus:bg-white/[0.05] transition-all placeholder:text-gray-500"
                   />
                   <button
                     type="button"

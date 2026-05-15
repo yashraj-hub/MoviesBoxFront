@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import MovieCard from './MovieCard'
-
-const TOKEN_KEY = 'moviesbox_token'
-const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
+import { apiFetch } from '../utils/apiFetch'
 
 export default function MovieRow({ title, endpoint, totalLabel }) {
   const [movies, setMovies] = useState([])
@@ -11,12 +9,12 @@ export default function MovieRow({ title, endpoint, totalLabel }) {
   const [totalResults, setTotalResults] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const token = localStorage.getItem(TOKEN_KEY)
+  const token = localStorage.getItem('moviesbox_token')
 
   useEffect(() => {
     setLoading(true)
-    fetch(`${API_BASE}/${endpoint}?page=1`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
+    apiFetch(`${endpoint}?page=1`)
+      .then(r => r?.json())
       .then(d => {
         setMovies(d.results || [])
         setTotalPages(d.totalPages ?? d.total_pages ?? null)
@@ -25,12 +23,12 @@ export default function MovieRow({ title, endpoint, totalLabel }) {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [endpoint, token])
+  }, [endpoint])
 
   const loadMore = async () => {
     setLoadingMore(true)
     const next = page + 1
-    const d = await fetch(`${API_BASE}/${endpoint}?page=${next}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+    const d = await apiFetch(`${endpoint}?page=${next}`).then(r => r?.json())
     setMovies(p => [...p, ...(d.results || [])])
     setPage(next)
     setLoadingMore(false)

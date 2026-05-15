@@ -4,16 +4,13 @@ import { ChevronLeft } from 'lucide-react'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import ProductionLogo from '../components/ProductionLogo'
 import MovieCard from '../components/MovieCard'
+import { apiFetch } from '../utils/apiFetch'
 
-const TOKEN_KEY = 'moviesbox_token'
-const API_BASE = '/api'
 const LIMIT = 20
 
 export default function ProductionHousePage() {
   const { category, companyId } = useParams()
   const navigate = useNavigate()
-  const token = localStorage.getItem(TOKEN_KEY)
-
   const [house, setHouse] = useState(null)
   const [movies, setMovies] = useState([])
   const [apiPage, setApiPage] = useState(1)
@@ -30,16 +27,14 @@ export default function ProductionHousePage() {
 
   // Fetch house info + logo
   useEffect(() => {
-    fetch(`${API_BASE}/production-house/${category}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.json())
+    apiFetch(`production-house/${category}`)
+      .then(r => r?.json())
       .then(d => {
         const found = d.houses?.find(h => String(h.id) === String(companyId))
         setHouse(found || null)
       })
       .catch(() => {})
-  }, [category, companyId, token])
+  }, [category, companyId])
 
   // Fetch first page of movies
   useEffect(() => {
@@ -48,10 +43,8 @@ export default function ProductionHousePage() {
     setApiPage(1)
     window.scrollTo(0, 0)
 
-    fetch(`${API_BASE}/production-house/${category}/${companyId}/movies?page=1`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.json())
+    apiFetch(`production-house/${category}/${companyId}/movies?page=1`)
+      .then(r => r?.json())
       .then(d => {
         setMovies(d.results || [])
         setApiPage(1)
@@ -59,7 +52,7 @@ export default function ProductionHousePage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [category, companyId, token])
+  }, [category, companyId])
 
   // BG slideshow — cycle through loaded movie backdrops
   const bgMovies = movies.filter(m => m.backdropPath || m.posterPath)
@@ -79,10 +72,8 @@ export default function ProductionHousePage() {
       if (entries[0].isIntersecting && apiPage < apiTotalPages && !fetching) {
         const next = apiPage + 1
         setFetching(true)
-        fetch(`${API_BASE}/production-house/${category}/${companyId}/movies?page=${next}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-          .then(r => r.json())
+        apiFetch(`production-house/${category}/${companyId}/movies?page=${next}`)
+          .then(r => r?.json())
           .then(d => {
             setMovies(prev => [...prev, ...(d.results || [])])
             setApiPage(next)
@@ -94,7 +85,7 @@ export default function ProductionHousePage() {
     }, { threshold: 0.1 })
     obs.observe(el)
     return () => obs.disconnect()
-  }, [apiPage, apiTotalPages, fetching, category, companyId, token])
+  }, [apiPage, apiTotalPages, fetching, category, companyId])
 
   const bgMovie = bgMovies[bgIndex]
   const bgUrl = bgMovie?.backdropPath || bgMovie?.posterPath || null

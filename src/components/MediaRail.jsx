@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, ChevronRight as ChevronNext } from 'lucide-r
 import { apiFetch } from '../utils/apiFetch'
 import ProductionLogo from './ProductionLogo'
 
-const TMDB_IMG = 'https://image.tmdb.org/t/p/w500'
+const TMDB_IMG = 'https://image.tmdb.org/t/p/w342'
 
 function getPosterUrl(movie) {
   if (!movie) return null
