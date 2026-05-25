@@ -1,71 +1,92 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { apiFetch } from '../utils/apiFetch'
 import TVShowCard from './TVShowCard'
 
-export default function TVShelfRail({ shelfKey, label, kind = 'discover' }) {
+const LIMIT = 20
+
+export default function TVShelfRail({ shelfKey, label }) {
   const navigate = useNavigate()
   const [shows, setShows] = useState([])
-  const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [loading, setLoading] = useState(true)
   const [fetching, setFetching] = useState(false)
-  const [slide, setSlide] = useState(0)
+  const scrollRef = useRef(null)
+  const fetchingRef = useRef(false)
+
+  const fetchShelf = useCallback(
+    async (nextPage) => {
+      const endpoint = `tv/discover/${shelfKey}?page=${nextPage}&limit=${LIMIT}`
+      return apiFetch(endpoint).then((r) => r?.json())
+    },
+    [shelfKey],
+  )
+
+  const loadPage = useCallback(
+    async (nextPage, append = false) => {
+      if (append) {
+        if (fetchingRef.current) return
+        fetchingRef.current = true
+        setFetching(true)
+      } else {
+        setLoading(true)
+      }
+
+      try {
+        const data = await fetchShelf(nextPage)
+        const nextResults = Array.isArray(data?.results) ? data.results : []
+        setShows((prev) => (append ? [...prev, ...nextResults] : nextResults))
+        setPage(nextPage)
+        setTotalPages(data?.totalPages ?? 1)
+      } catch {
+        if (!append) setShows([])
+      } finally {
+        if (append) {
+          fetchingRef.current = false
+          setFetching(false)
+        } else {
+          setLoading(false)
+        }
+      }
+    },
+    [fetchShelf],
+  )
 
   useEffect(() => {
-    let mounted = true
-    const load = async () => {
-      setLoading(true)
-      try {
-        const endpoint =
-          kind === 'trending'
-            ? `tv/discover/${shelfKey}?limit=10`
-            : `tv/discover/${shelfKey}?page=1&limit=20`
-        const res = await apiFetch(endpoint)
-        const data = await res?.json()
-        if (!mounted) return
-        setShows(Array.isArray(data?.results) ? data.results : [])
-        setTotalPages(data?.totalPages ?? 1)
-        setPage(1)
-        setSlide(0)
-      } catch {
-        if (!mounted) return
-        setShows([])
-      } finally {
-        if (mounted) setLoading(false)
-      }
+    setShows([])
+    setPage(1)
+    setTotalPages(1)
+    fetchingRef.current = false
+    setFetching(false)
+    setLoading(true)
+    loadPage(1, false)
+
+    const node = scrollRef.current
+    if (node) node.scrollTo({ left: 0, behavior: 'auto' })
+  }, [loadPage, shelfKey])
+
+  const loadMore = useCallback(async () => {
+    if (fetchingRef.current) return
+    if (page >= totalPages) return
+    await loadPage(page + 1, true)
+  }, [loadPage, page, totalPages])
+
+  const onScroll = useCallback(() => {
+    const node = scrollRef.current
+    if (!node) return
+    const remaining = node.scrollWidth - node.scrollLeft - node.clientWidth
+    if (remaining < 360) {
+      loadMore()
     }
+  }, [loadMore])
 
-    load()
-    return () => {
-      mounted = false
-    }
-  }, [kind, shelfKey])
-
-  const pageCards = useMemo(() => shows.slice(slide * 5, (slide + 1) * 5), [shows, slide])
-
-  const prev = () => setSlide((current) => Math.max(0, current - 1))
-
-  const next = async () => {
-    const nextSlide = slide + 1
-    const needed = (nextSlide + 1) * 5
-    if (needed >= shows.length && page < totalPages && !fetching) {
-      setFetching(true)
-      try {
-        const nextPage = page + 1
-        const res = await apiFetch(`tv/discover/${shelfKey}?page=${nextPage}&limit=20`)
-        const data = await res?.json()
-        setShows((prevShows) => [...prevShows, ...(Array.isArray(data?.results) ? data.results : [])])
-        setPage(nextPage)
-        setTotalPages(data?.totalPages ?? totalPages)
-      } catch {
-        // ignore
-      } finally {
-        setFetching(false)
-      }
-    }
-    setSlide(nextSlide)
+  const scrollByAmount = (direction) => {
+    const node = scrollRef.current
+    if (!node) return
+    node.scrollBy({ left: direction * Math.max(280, node.clientWidth * 0.82), behavior: 'smooth' })
+    if (direction > 0) loadMore()
   }
 
   return (
@@ -90,17 +111,15 @@ export default function TVShelfRail({ shelfKey, label, kind = 'discover' }) {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={prev}
-            disabled={slide === 0}
-            className="w-9 h-9 rounded-full bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+            onClick={() => scrollByAmount(-1)}
+            className="w-9 h-9 rounded-full bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition flex items-center justify-center"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             type="button"
-            onClick={next}
-            disabled={fetching || (slide + 1) * 5 >= shows.length && page >= totalPages}
-            className="w-9 h-9 rounded-full bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+            onClick={() => scrollByAmount(1)}
+            className="w-9 h-9 rounded-full bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition flex items-center justify-center"
           >
             {fetching ? (
               <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -112,16 +131,29 @@ export default function TVShelfRail({ shelfKey, label, kind = 'discover' }) {
       </div>
 
       {loading ? (
-        <div className="px-4 md:px-12 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+        <div className="px-4 md:px-12 flex gap-4 overflow-hidden">
           {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="aspect-[2/3] rounded-2xl bg-white/5 animate-pulse" />
+            <div key={index} className="w-[160px] flex-none">
+              <div className="aspect-[2/3] rounded-2xl bg-white/5 animate-pulse" />
+            </div>
           ))}
         </div>
       ) : shows.length === 0 ? null : (
-        <div className="px-4 md:px-12 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          {pageCards.map((show) => (
-            <TVShowCard key={show.id} show={show} />
-          ))}
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-[#0a0a0a] to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#0a0a0a] to-transparent" />
+
+          <div
+            ref={scrollRef}
+            onScroll={onScroll}
+            className="scrollbar-hide px-4 md:px-12 flex gap-4 overflow-x-auto pb-2 pr-1 snap-x snap-mandatory"
+          >
+            {shows.map((show) => (
+              <div key={show.id} className="w-[160px] flex-none snap-start sm:w-[180px] md:w-[200px] lg:w-[220px]">
+                <TVShowCard show={show} showSaveButton={false} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>

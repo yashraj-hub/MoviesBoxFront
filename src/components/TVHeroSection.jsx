@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Play, Star } from 'lucide-react'
+import { Star } from 'lucide-react'
 import { apiFetch } from '../utils/apiFetch'
 
 export default function TVHeroSection() {
@@ -12,7 +12,6 @@ export default function TVHeroSection() {
 
   useEffect(() => {
     let mounted = true
-    setLoading(true)
     apiFetch('tv/discover/trending?limit=5')
       .then((res) => res?.json())
       .then((data) => {
@@ -82,18 +81,24 @@ export default function TVHeroSection() {
         </motion.div>
       </AnimatePresence>
 
-      <div className="absolute inset-0 bg-black/55" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/35 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/45 to-black/15" />
+      <div className="absolute inset-0 bg-black/38" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/22 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/28 to-black/5" />
 
       <div className="relative z-10 flex h-full flex-col justify-end px-4 md:px-12 pb-12 md:pb-16">
         <div className="max-w-4xl">
-          <p className="text-[10px] font-black uppercase tracking-[0.35em] text-gray-400">
-            TMDB / TV
-          </p>
-          <h1 className="mt-3 max-w-4xl font-heading text-5xl md:text-7xl uppercase leading-[0.88] text-white">
-            {current.name}
-          </h1>
+          {current.logoUrl ? (
+            <img
+              src={current.logoUrl}
+              alt={current.name}
+              className="mb-4 max-h-20 w-auto max-w-[360px] object-contain md:max-h-24 md:max-w-[480px]"
+              loading="eager"
+            />
+          ) : (
+            <h1 className="max-w-4xl font-heading text-5xl md:text-7xl uppercase leading-[0.88] text-white">
+              {current.name}
+            </h1>
+          )}
           <div className="mt-4 flex flex-wrap items-center gap-3 text-[10px] font-black uppercase tracking-[0.25em] text-gray-300">
             {year ? <span>{year}</span> : null}
             {typeof current.voteAverage === 'number' ? (
@@ -106,23 +111,11 @@ export default function TVHeroSection() {
             {current.status ? <span>{current.status}</span> : null}
           </div>
           {current.overview ? (
-            <p className="mt-5 max-w-2xl text-sm leading-7 text-gray-200">
+            <p className="mt-5 max-w-2xl line-clamp-3 text-sm leading-7 text-gray-200">
               {current.overview}
             </p>
           ) : null}
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full bg-yellow-400 px-5 py-3 text-[10px] font-black uppercase tracking-[0.25em] text-black transition hover:bg-yellow-300"
-            >
-              <Play className="h-3.5 w-3.5 fill-current" />
-              Play
-            </button>
-            <div className="rounded-full border border-white/10 bg-black/40 px-5 py-3 text-[10px] font-black uppercase tracking-[0.25em] text-gray-300">
-              Trending TV
-            </div>
-          </div>
         </div>
       </div>
     </section>

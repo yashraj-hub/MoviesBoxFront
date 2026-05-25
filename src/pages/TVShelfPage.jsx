@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { apiFetch } from '../utils/apiFetch'
 import TVShowCard from '../components/TVShowCard'
+import { TV_CHANNELS } from '../config/tvChannels'
 import { TV_SHELVES } from '../config/tvShelves'
 
 const LIMIT = 20
@@ -12,6 +13,7 @@ export default function TVShelfPage() {
   const { shelfKey } = useParams()
   const navigate = useNavigate()
   const shelf = useMemo(() => TV_SHELVES.find((item) => item.key === shelfKey) || null, [shelfKey])
+  const channel = useMemo(() => TV_CHANNELS.find((item) => item.key === shelfKey) || null, [shelfKey])
 
   const [shows, setShows] = useState([])
   const [page, setPage] = useState(1)
@@ -147,12 +149,21 @@ export default function TVShelfPage() {
           Back
         </button>
 
-        <div className="absolute inset-0 z-10 flex items-end justify-center px-4 pb-10 sm:px-8 sm:pb-14 md:pb-16">
-          <div className="w-full max-w-5xl text-center">
-            <h1 className="mt-3 break-words font-heading text-3xl uppercase leading-[0.95] tracking-tight text-white drop-shadow-2xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl">
-              {currentTitle}
-            </h1>
-          </div>
+        <div className="absolute inset-0 z-10 flex items-center justify-center px-4">
+          {channel ? (
+            <img
+              src={channel.logoSrc}
+              alt={channel.label}
+              className={`w-full max-w-[540px] object-contain drop-shadow-[0_18px_35px_rgba(0,0,0,0.72)] ${channel.logoClassName || ''}`}
+              loading="eager"
+            />
+          ) : (
+            <div className="w-full max-w-5xl text-center">
+              <h1 className="mt-3 break-words font-heading text-3xl uppercase leading-[0.95] tracking-tight text-white drop-shadow-2xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl">
+                {currentTitle}
+              </h1>
+            </div>
+          )}
         </div>
       </div>
 

@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 
 const savedCache = new Map()
 
-export default function TVShowCard({ show, titleClassName = 'text-white' }) {
+export default function TVShowCard({ show, titleClassName = 'text-white', showSaveButton = true }) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const poster = show.posterUrl || show.backdropUrl || null
@@ -32,9 +32,15 @@ export default function TVShowCard({ show, titleClassName = 'text-white' }) {
   }, [id])
 
   useEffect(() => {
+    if (!showSaveButton) {
+      setSaved(false)
+      setSaving(false)
+      return undefined
+    }
+
     if (!user?.id || !id) {
       setSaved(false)
-      return
+      return undefined
     }
 
     const cacheKey = `${user.id}:${id}`
@@ -57,11 +63,11 @@ export default function TVShowCard({ show, titleClassName = 'text-white' }) {
     return () => {
       cancelled = true
     }
-  }, [user?.id, id])
+  }, [showSaveButton, user?.id, id])
 
   const saveToMyList = async (e) => {
     e.stopPropagation()
-    if (!user || !id || saving || saved) return
+    if (!showSaveButton || !user || !id || saving || saved) return
     setSaving(true)
     try {
       const res = await apiFetch('my-list', {
@@ -96,7 +102,7 @@ export default function TVShowCard({ show, titleClassName = 'text-white' }) {
       className="group relative cursor-pointer text-left select-none"
     >
       <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] transition-all duration-300 group-hover:border-yellow-400/50 group-hover:shadow-[0_24px_60px_rgba(0,0,0,0.55)]">
-        {user ? (
+        {showSaveButton && user ? (
           <button
             type="button"
             onClick={saveToMyList}
