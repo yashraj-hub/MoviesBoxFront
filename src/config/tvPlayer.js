@@ -1,6 +1,10 @@
 const normalizeBaseUrl = (value) => (value || '').trim().replace(/\/+$/, '')
 
-export const TV_PLAYER_BASE_URL = normalizeBaseUrl(import.meta.env.VITE_TV_PLAYER_BASE_URL)
+const DEFAULT_TV_PLAYER_BASE_URL = 'https://streamimdb.ru/embed'
+
+export const TV_PLAYER_BASE_URL = normalizeBaseUrl(
+  import.meta.env.VITE_TV_PLAYER_BASE_URL || DEFAULT_TV_PLAYER_BASE_URL,
+)
 
 export const buildTVPlayerUrl = (imdbId, options = {}) => {
   if (!imdbId || !TV_PLAYER_BASE_URL) return ''
