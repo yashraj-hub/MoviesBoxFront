@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import MovieCard from '../components/MovieCard'
 import SearchCollectionCard from '../components/SearchCollectionCard'
+import TVShowCard from '../components/TVShowCard'
 import { peekSearchOpenFlags, clearSearchOpenFlags } from '../searchFocusFlags'
 
 const TOKEN_KEY = 'moviesbox_token'
@@ -60,12 +61,15 @@ export default function SearchPage() {
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
+  const [tvResults, setTvResults] = useState([])
   const [collectionGroups, setCollectionGroups] = useState([])
   const [otherResults, setOtherResults] = useState([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [source, setSource] = useState('')
+  const [tvSource, setTvSource] = useState('')
   const [total, setTotal] = useState(null)
+  const [tvTotal, setTvTotal] = useState(null)
   const [newestFirst, setNewestFirst] = useState(false)
 
   const debounceTimerRef = useRef(null)
@@ -73,10 +77,13 @@ export default function SearchPage() {
 
   const clearResults = useCallback(() => {
     setResults([])
+    setTvResults([])
     setCollectionGroups([])
     setOtherResults([])
     setSource('')
+    setTvSource('')
     setTotal(null)
+    setTvTotal(null)
     setSearched(false)
     setLoading(false)
   }, [])
@@ -96,6 +103,7 @@ export default function SearchPage() {
     const token = localStorage.getItem(TOKEN_KEY)
 
     setResults([])
+    setTvResults([])
     setCollectionGroups([])
     setOtherResults([])
     setLoading(true)
@@ -109,20 +117,26 @@ export default function SearchPage() {
       .then((d) => {
         if (abortRef.current !== ac) return
         setResults(d.results || [])
+        setTvResults(Array.isArray(d.tvResults) ? d.tvResults : [])
         setCollectionGroups(Array.isArray(d.collectionGroups) ? d.collectionGroups : [])
         setOtherResults(Array.isArray(d.otherResults) ? d.otherResults : [])
         setSource(d.source || '')
+        setTvSource(d.tvSource || '')
         setTotal(d.totalResults ?? d.total_results ?? null)
+        setTvTotal(d.tvTotalResults ?? null)
         setNewestFirst(false)
       })
       .catch((err) => {
         if (err.name === 'AbortError') return
         if (abortRef.current !== ac) return
         setResults([])
+        setTvResults([])
         setCollectionGroups([])
         setOtherResults([])
         setSource('')
+        setTvSource('')
         setTotal(null)
+        setTvTotal(null)
       })
       .finally(() => {
         if (abortRef.current === ac) setLoading(false)
@@ -135,7 +149,6 @@ export default function SearchPage() {
 
     const trimmed = query.trim()
     if (trimmed.length < 2) {
-      clearResults()
       return
     }
 
@@ -153,6 +166,15 @@ export default function SearchPage() {
     e.preventDefault()
     clearTimeout(debounceTimerRef.current)
     startSearch(query)
+  }
+
+  const handleQueryChange = (value) => {
+    setQuery(value)
+    if (value.trim().length < 2) {
+      abortRef.current?.abort()
+      abortRef.current = null
+      clearResults()
+    }
   }
 
   useLayoutEffect(() => {
@@ -210,8 +232,8 @@ export default function SearchPage() {
   }, [hasCollections, otherResults, results, newestFirst])
 
   const gridClass = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4'
-
-  const showToggle = results.length > 0
+  const showToggle = results.length > 0 || collectionGroups.length > 0 || otherResults.length > 0
+  const hasAnyResults = tvResults.length > 0 || results.length > 0 || collectionGroups.length > 0 || otherResults.length > 0
 
   return (
     <div className="pt-24 px-4 md:px-12 pb-16">
@@ -220,27 +242,33 @@ export default function SearchPage() {
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search movies…"
+            onChange={(e) => handleQueryChange(e.target.value)}
+            placeholder="Search movies or TV shows..."
             autoComplete="off"
             spellCheck={false}
             className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-yellow-400 focus:outline-none"
           />
-          <button type="submit" disabled={loading}
-            className="shrink-0 rounded-2xl bg-yellow-400 px-8 py-3 text-sm font-black uppercase tracking-widest text-black transition-all hover:bg-yellow-300 disabled:opacity-50 sm:px-6">
+          <button
+            type="submit"
+            disabled={loading}
+            className="shrink-0 rounded-2xl bg-yellow-400 px-8 py-3 text-sm font-black uppercase tracking-widest text-black transition-all hover:bg-yellow-300 disabled:opacity-50 sm:px-6"
+          >
             {loading ? '...' : 'Search'}
           </button>
         </form>
       </div>
+
       {searched && (
         <>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[10px] uppercase tracking-widest text-gray-500">
               {loading && query.trim().length >= 2 ? (
-                <span className="text-gray-400">Searching…</span>
+                <span className="text-gray-400">Searching...</span>
               ) : (
                 <>
-                  {total != null ? `${total.toLocaleString()} results` : ''}{source ? ` · source: ${source}` : ''}
+                  {total != null ? `${total.toLocaleString()} results` : ''}
+                  {source ? ` · movies: ${source}` : ''}
+                  {tvSource ? ` · tv: ${tvSource}` : ''}
                   {total != null && results.length > 0 && total > results.length ? (
                     <span className="text-gray-600"> · loaded {results.length} for this view</span>
                   ) : null}
@@ -248,11 +276,11 @@ export default function SearchPage() {
               )}
             </p>
             {showToggle && (
-              <div className="flex rounded-full border border-white/10 bg-white/5 p-0.5 w-fit">
+              <div className="flex w-fit rounded-full border border-white/10 bg-white/5 p-0.5">
                 <button
                   type="button"
                   onClick={() => setNewestFirst(false)}
-                  className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition ${
+                  className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition ${
                     !newestFirst ? 'bg-yellow-400 text-black' : 'text-gray-400 hover:text-white'
                   }`}
                 >
@@ -261,7 +289,7 @@ export default function SearchPage() {
                 <button
                   type="button"
                   onClick={() => setNewestFirst(true)}
-                  className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition ${
+                  className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition ${
                     newestFirst ? 'bg-yellow-400 text-black' : 'text-gray-400 hover:text-white'
                   }`}
                 >
@@ -270,15 +298,41 @@ export default function SearchPage() {
               </div>
             )}
           </div>
+
           {query.trim().length > 0 && query.trim().length < 2 && (
-            <p className="mb-6 text-center text-xs text-gray-500">Type at least 2 characters — search runs as you type.</p>
+            <p className="mb-6 text-center text-xs text-gray-500">Type at least 2 characters - search runs as you type.</p>
           )}
-          {results.length === 0 && !loading && searched && query.trim().length >= 2
+
+          {!hasAnyResults && !loading && searched && query.trim().length >= 2
             ? <p className="text-gray-600">No results found.</p>
             : loading
-              ? <div className={gridClass}>{Array.from({ length: 12 }).map((_, i) => <div key={i} className="rounded-xl bg-white/5 animate-pulse aspect-[2/3]" />)}</div>
+              ? <div className={gridClass}>{Array.from({ length: 12 }).map((_, i) => <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-white/5" />)}</div>
               : (
                 <div className="space-y-12 md:space-y-14">
+                  {tvResults.length > 0 && (
+                    <section className="space-y-5 md:space-y-6">
+                      <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+                        <div className="min-w-0">
+                          <h2 className="text-base font-black uppercase tracking-[0.14em] text-red-400 md:text-lg">
+                            TV Shows
+                          </h2>
+                          <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-gray-500">
+                            {tvTotal != null ? `${tvTotal} results` : `${tvResults.length} titles`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={gridClass}>
+                        {tvResults.map((show) => (
+                          <TVShowCard
+                            key={show.id}
+                            show={show}
+                            titleClassName="text-red-400 group-hover:text-red-300"
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
                   {hasCollections && (
                     <div className="space-y-10 md:space-y-12">
                       {sortedCollectionGroups.map((g) => (
@@ -328,7 +382,7 @@ export default function SearchPage() {
                               <h3 className="text-xs font-black uppercase tracking-[0.15em] text-yellow-400/90 sm:text-sm">
                                 {year}
                               </h3>
-                              <span className="text-[10px] text-gray-500 uppercase tracking-widest">
+                              <span className="text-[10px] uppercase tracking-widest text-gray-500">
                                 {movies.length} {movies.length === 1 ? 'title' : 'titles'}
                               </span>
                             </div>

@@ -346,7 +346,7 @@ export default function ProfilePage() {
             ) : listItems.length === 0 ? (
               <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-10 text-center">
                 <p className="text-gray-500 text-xs leading-relaxed max-w-sm mx-auto">
-                  Nothing saved yet. Save movies from a title page to see them here.
+                  Nothing saved yet. Save any title from a movie or TV page to see it here.
                 </p>
               </div>
             ) : (
@@ -355,7 +355,7 @@ export default function ProfilePage() {
                   <button
                     key={m.tmdbId}
                     type="button"
-                    onClick={() => navigate(`/movie/${m.tmdbId}`)}
+                    onClick={() => navigate((m.mediaType || 'movie') === 'tv' ? `/tv/${m.tmdbId}` : `/movie/${m.tmdbId}`)}
                     className="group text-left w-full p-0 border-0 bg-transparent cursor-pointer rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-400/60"
                   >
                     <div className="relative rounded-lg overflow-hidden border border-white/10 bg-white/5 group-hover:border-yellow-400/35 transition-all duration-300">

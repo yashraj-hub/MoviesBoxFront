@@ -2,9 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { markSearchOpened } from '../searchFocusFlags'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Menu, X, ChevronDown, Bookmark, Shield, LogOut, User, Zap, CircleUser } from 'lucide-react'
-
-const TOKEN_KEY = 'moviesbox_token'
+import { Search, Menu, X, ChevronDown, Bookmark, Shield, LogOut, User, CircleUser, Tv } from 'lucide-react'
+import { TV_GENRES } from '../config/tvGenres'
 
 const ZONES = [
   { id: 'bollywood', label: 'Bollywood', path: '/bollywood' },
@@ -66,21 +65,6 @@ const ANIMATION_CATEGORIES = [
   { slug: 'animation-2d',          label: '2D / Hand Drawn' },
 ]
 
-const GENRES = [
-  { id: 28,    name: 'Action' },
-  { id: 35,    name: 'Comedy' },
-  { id: 18,    name: 'Drama' },
-  { id: 27,    name: 'Horror' },
-  { id: 878,   name: 'Sci-Fi' },
-  { id: 53,    name: 'Thriller' },
-  { id: 10749, name: 'Romance' },
-  { id: 99,    name: 'Documentary' },
-  { id: 14,    name: 'Fantasy' },
-  { id: 80,    name: 'Crime' },
-  { id: 12,    name: 'Adventure' },
-  { id: 10751, name: 'Family' },
-]
-
 const AnimatedLogo = () => (
   <Link to="/" className="inline-flex items-center select-none">
     <div className="flex flex-col items-center leading-[0.7]">
@@ -100,14 +84,13 @@ const Navbar = ({ user, onLogout }) => {
   const location = useLocation()
   const dropdownRef = useRef(null)
   const profileRef = useRef(null)
-
-  useEffect(() => {
-    const path = location.pathname
-    if (path.startsWith('/hollywood')) setSelectedZone('hollywood')
-    else if (path.startsWith('/animation')) setSelectedZone('animation')
-    else if (path.startsWith('/bollywood')) setSelectedZone('bollywood')
-    // all other routes (/movie, /search, /admin etc) — keep current zone
-  }, [location.pathname])
+  const isTVRoute = location.pathname === '/' || location.pathname.startsWith('/tv')
+  const routeZone =
+    location.pathname.startsWith('/hollywood') ? 'hollywood'
+      : location.pathname.startsWith('/animation') ? 'animation'
+        : location.pathname.startsWith('/bollywood') ? 'bollywood'
+          : null
+  const activeZone = isTVRoute ? null : (routeZone ?? selectedZone)
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50)
@@ -129,19 +112,17 @@ const Navbar = ({ user, onLogout }) => {
     return () => { document.body.style.overflow = '' }
   }, [mobileOpen])
 
-  const handleGenreClick = (genre) => {
+  const handleCategoryClick = (item) => {
     setShowCategories(false)
     setMobileOpen(false)
-    navigate(`/genre?id=${genre.id}&name=${encodeURIComponent(genre.name)}&zone=${selectedZone}`)
+    if (isTVRoute) {
+      navigate(`/tv-genre?id=${item.id}&name=${encodeURIComponent(item.name)}`)
+      return
+    }
+    navigate(`/genre?slug=${item.slug}&name=${encodeURIComponent(item.label)}&zone=${activeZone || selectedZone}`)
   }
 
-  const handleCategoryClick = (cat) => {
-    setShowCategories(false)
-    setMobileOpen(false)
-    navigate(`/genre?slug=${cat.slug}&name=${encodeURIComponent(cat.label)}`)
-  }
-
-  const zoneIndex = ZONES.findIndex(z => z.id === selectedZone)
+  const zoneIndex = ZONES.findIndex(z => z.id === activeZone)
 
   return (
     <>
@@ -159,24 +140,38 @@ const Navbar = ({ user, onLogout }) => {
 
           {/* Zone Switcher */}
           <div className="relative flex bg-white/5 border border-white/10 rounded-full p-1 h-10 items-center backdrop-blur-md">
-            <motion.div
-              className="absolute rounded-full h-8 bg-gradient-to-r from-yellow-500 to-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.4)]"
-              animate={{ x: zoneIndex * 95, width: 95 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            />
+            {!isTVRoute && zoneIndex >= 0 && (
+              <motion.div
+                className="absolute rounded-full h-8 bg-gradient-to-r from-yellow-500 to-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.4)]"
+                animate={{ x: zoneIndex * 95, width: 95 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
             {ZONES.map((zone) => (
               <motion.button
                 key={zone.id}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => { setSelectedZone(zone.id); navigate(zone.path) }}
                 className={`relative z-10 text-[10px] font-black uppercase tracking-wider transition-colors duration-300 w-[95px] h-full ${
-                  selectedZone === zone.id ? 'text-[#333]' : 'text-gray-500 hover:text-gray-300'
+                  activeZone === zone.id ? 'text-[#333]' : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
                 {zone.label}
               </motion.button>
             ))}
           </div>
+
+          <NavLink
+            to="/tv-shows"
+            className={({ isActive }) => `inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tight h-9 transition-all duration-300 border backdrop-blur-sm ${
+              isActive || isTVRoute
+                ? 'bg-yellow-400 text-black border-yellow-300'
+                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+            }`}
+          >
+            <Tv className="w-3.5 h-3.5" />
+            TV Shows
+          </NavLink>
 
           {/* Categories Dropdown */}
           <div
@@ -203,9 +198,15 @@ const Navbar = ({ user, onLogout }) => {
                   transition={{ duration: 0.2 }}
                   className="absolute left-0 top-[calc(100%+12px)] z-50 w-[300px] rounded-2xl border border-white/10 bg-black/95 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
                 >
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400 mb-4">Genres</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400 mb-4">
+                    {isTVRoute ? 'TV Genres' : 'Genres'}
+                  </h3>
                   <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-                    {selectedZone === 'bollywood' ? (
+                    {isTVRoute ? (
+                      TV_GENRES.map((genre) => (
+                        <motion.button key={genre.id} whileHover={{ x: 5, color: '#fff' }} type="button" onClick={() => handleCategoryClick(genre)} className="text-left text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 transition-all duration-200 py-1">{genre.name}</motion.button>
+                      ))
+                    ) : selectedZone === 'bollywood' ? (
                       BOLLYWOOD_CATEGORIES.map((cat) => (
                         <motion.button key={cat.slug} whileHover={{ x: 5, color: '#fff' }} type="button" onClick={() => handleCategoryClick(cat)} className="text-left text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 transition-all duration-200 py-1">{cat.label}</motion.button>
                       ))
@@ -382,16 +383,30 @@ const Navbar = ({ user, onLogout }) => {
                     key={zone.id}
                     onClick={() => { setSelectedZone(zone.id); navigate(zone.path); setMobileOpen(false) }}
                     className={`text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition mb-1 ${
-                      selectedZone === zone.id ? 'bg-yellow-400 text-black' : 'bg-white/5 text-gray-400'
+                      activeZone === zone.id ? 'bg-yellow-400 text-black' : 'bg-white/5 text-gray-400'
                     }`}
                   >
                     {zone.label}
                   </button>
                 ))}
 
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mt-5 mb-2 px-0.5">Categories</p>
+                <button
+                  type="button"
+                  onClick={() => { navigate('/tv-shows'); setMobileOpen(false) }}
+                  className="text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition mb-1 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
+                >
+                  TV Shows
+                </button>
+
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mt-5 mb-2 px-0.5">
+                  {isTVRoute ? 'TV Genres' : 'Categories'}
+                </p>
                 <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                  {selectedZone === 'bollywood' ? (
+                  {isTVRoute ? (
+                    TV_GENRES.map((genre) => (
+                      <button key={genre.id} onClick={() => handleCategoryClick(genre)} className="text-left px-2.5 py-2.5 rounded-lg bg-white/5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wide text-gray-400 hover:text-white hover:bg-white/10 transition leading-snug line-clamp-3 min-h-[3.25rem]">{genre.name}</button>
+                    ))
+                  ) : selectedZone === 'bollywood' ? (
                     BOLLYWOOD_CATEGORIES.map((cat) => (
                       <button key={cat.slug} onClick={() => handleCategoryClick(cat)} className="text-left px-2.5 py-2.5 rounded-lg bg-white/5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wide text-gray-400 hover:text-white hover:bg-white/10 transition leading-snug line-clamp-3 min-h-[3.25rem]">{cat.label}</button>
                     ))

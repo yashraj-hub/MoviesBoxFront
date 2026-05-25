@@ -21,9 +21,9 @@ export default function MyListPage() {
     load()
   }, [load])
 
-  const remove = async (tmdbId) => {
-    const r = await apiFetch(`my-list/${tmdbId}`, { method: 'DELETE' })
-    if (r?.ok) setItems((prev) => prev.filter((x) => x.tmdbId !== tmdbId))
+  const remove = async (tmdbId, mediaType = 'movie') => {
+    const r = await apiFetch(`my-list/${tmdbId}?mediaType=${encodeURIComponent(mediaType)}`, { method: 'DELETE' })
+    if (r?.ok) setItems((prev) => prev.filter((x) => !(x.tmdbId === tmdbId && (x.mediaType || 'movie') === mediaType)))
   }
 
   return (
@@ -53,7 +53,7 @@ export default function MyListPage() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-16 text-center max-w-lg mx-auto">
           <Bookmark className="w-12 h-12 text-yellow-400/40 mx-auto mb-4" />
           <p className="text-gray-400 text-sm leading-relaxed">
-            Nothing here yet. Open any movie and tap <span className="text-yellow-400 font-semibold">Save to my list</span> to build your collection.
+            Nothing here yet. Open any title and tap <span className="text-yellow-400 font-semibold">Save to my list</span> to build your collection.
           </p>
         </div>
       ) : (
@@ -62,7 +62,7 @@ export default function MyListPage() {
             <div key={m.tmdbId} className="group relative">
               <button
                 type="button"
-                onClick={() => remove(m.tmdbId)}
+                onClick={() => remove(m.tmdbId, m.mediaType || 'movie')}
                 className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-black/70 border border-white/15 text-gray-300 hover:text-red-400 hover:border-red-400/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 aria-label="Remove from list"
               >
@@ -71,9 +71,9 @@ export default function MyListPage() {
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => navigate(`/movie/${m.tmdbId}`)}
+                onClick={() => navigate((m.mediaType || 'movie') === 'tv' ? `/tv/${m.tmdbId}` : `/movie/${m.tmdbId}`)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') navigate(`/movie/${m.tmdbId}`)
+                  if (e.key === 'Enter') navigate((m.mediaType || 'movie') === 'tv' ? `/tv/${m.tmdbId}` : `/movie/${m.tmdbId}`)
                 }}
                 className="cursor-pointer"
               >

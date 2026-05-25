@@ -17,6 +17,10 @@ import PersonMoviesPage from './pages/PersonMoviesPage'
 import CompanyMoviesPage from './pages/CompanyMoviesPage'
 import MyListPage from './pages/MyListPage'
 import ProfilePage from './pages/ProfilePage'
+import TVShowsPage from './pages/TVShowsPage'
+import TVGenrePage from './pages/TVGenrePage'
+import TVShelfPage from './pages/TVShelfPage'
+import TVPlayerPage from './pages/TVPlayerPage'
 import { markSearchOpened } from './searchFocusFlags'
 import SiteActiveTracker from './components/SiteActiveTracker'
 
@@ -40,7 +44,7 @@ function App() {
             <Route path="/auth" element={<AuthPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AppShell />}>
-                <Route path="/" element={<Navigate to="/bollywood" replace />} />
+                <Route index element={<TVShowsPage />} />
                 <Route path="/bollywood" element={<BollywoodPage />} />
                 <Route path="/hollywood" element={<HollywoodPage />} />
                 <Route path="/animation" element={<AnimationPage />} />
@@ -53,9 +57,13 @@ function App() {
                 <Route path="/company" element={<CompanyMoviesPage />} />
                 <Route path="/my-list" element={<MyListPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/tv-shows" element={<TVShowsPage />} />
+                <Route path="/tv-genre" element={<TVGenrePage />} />
+                <Route path="/tv-shelf/:shelfKey" element={<TVShelfPage />} />
+                <Route path="/tv/:tmdbId" element={<TVPlayerPage />} />
               </Route>
             </Route>
-            <Route path="*" element={<Navigate to="/bollywood" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Star, Clock, Calendar, TrendingUp, DollarSign, ChevronLeft, Play, Volume2, VolumeX, BookmarkPlus, BookmarkCheck } from 'lucide-react'
+import { Star, Clock, Calendar, TrendingUp, DollarSign, ChevronLeft, Play, Volume2, VolumeX, BookmarkPlus, BookmarkCheck, Flag } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../utils/apiFetch'
 import { useAuth } from '../context/AuthContext'
@@ -202,6 +202,21 @@ function MovieHero({ movie, onBack, myList }) {
   )
 }
 
+// Extract YouTube video ID from watch URL, embed URL, or iframe HTML
+function extractYouTubeId(input) {
+  if (!input) return null
+  const str = String(input)
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/,
+    /src=["'].*?youtube\.com\/embed\/([\w-]{11})/,
+  ]
+  for (const p of patterns) {
+    const m = str.match(p)
+    if (m) return m[1]
+  }
+  return null
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function MovieDetailPage() {
   const { tmdbId } = useParams()
@@ -213,6 +228,7 @@ export default function MovieDetailPage() {
   const [adBlockEnabled, setAdBlockEnabled] = useState(true)
   const [inMyList, setInMyList] = useState(false)
   const [myListBusy, setMyListBusy] = useState(false)
+  const [flagBusy, setFlagBusy] = useState(false)
   const [related, setRelated] = useState([])
   const [relPage, setRelPage] = useState(1)
   const [relTotalPages, setRelTotalPages] = useState(1)
@@ -275,7 +291,7 @@ export default function MovieDetailPage() {
       setInMyList(false)
       return
     }
-    apiFetch(`my-list/check/${tmdbId}`)
+    apiFetch(`my-list/check/${tmdbId}?mediaType=movie`)
       .then((r) => (r ? r.json() : null))
       .then((d) => setInMyList(Boolean(d?.inList)))
       .catch(() => setInMyList(false))
@@ -342,6 +358,7 @@ export default function MovieDetailPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tmdbId: movie.tmdbId,
+            mediaType: 'movie',
             title: movie.title,
             posterUrl: movie.posterUrl || '',
           }),
@@ -355,6 +372,25 @@ export default function MovieDetailPage() {
     }
   }
 
+  const TOKEN_KEY = 'moviesbox_token'
+  const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
+
+  const toggleFlag = async () => {
+    if (flagBusy) return
+    setFlagBusy(true)
+    try {
+      const newFlagged = !movie.redFlagged
+      const flaggedBy = newFlagged ? (user?.fullName || user?.email || 'Unknown') : ''
+      const r = await fetch(`${API_BASE}/movies/${movie.tmdbId}/flag`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}` },
+        body: JSON.stringify({ redFlagged: newFlagged, streamUrl: newFlagged ? (movie.streamUrl || '') : '', flaggedBy }),
+      })
+      if (r.ok) setMovie(prev => ({ ...prev, redFlagged: newFlagged, flaggedBy: newFlagged ? flaggedBy : '' }))
+    } catch {}
+    finally { setFlagBusy(false) }
+  }
+
   const relatedRows = []
   for (let i = 0; i < related.length; i += CARDS_PER_ROW) {
     relatedRows.push(related.slice(i, i + CARDS_PER_ROW))
@@ -364,7 +400,7 @@ export default function MovieDetailPage() {
     <div className="min-h-screen pb-24">
       {/* Player Modal */}
       <AnimatePresence>
-        {playing && movie?.imdbId && (
+        {playing && (movie?.imdbId || movie?.streamUrl) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -393,41 +429,57 @@ export default function MovieDetailPage() {
                   ? <img src={movie.logoUrl} alt={movie.title} className="h-6 w-auto object-contain max-w-[150px]" loading="lazy" />
                   : <span className="text-[13px] font-black uppercase tracking-widest text-white">{movie.title}</span>
                 }
-                <div className="ml-auto flex items-center gap-2">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Ad Block</span>
-                  <button
-                    type="button"
-                    onClick={() => setAdBlockEnabled(v => !v)}
-                    className={`relative w-10 h-5 rounded-full border transition-all ${
-                      adBlockEnabled ? 'bg-green-500/20 border-green-500/40' : 'bg-white/10 border-white/20'
-                    }`}
-                  >
-                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                      adBlockEnabled ? 'translate-x-5' : ''
-                    }`} />
-                  </button>
-                  <span className={`text-[9px] font-black uppercase tracking-widest ${
-                    adBlockEnabled ? 'text-green-400' : 'text-gray-600'
-                  }`}>{adBlockEnabled ? 'ON' : 'OFF'}</span>
-                </div>
+                {!movie.streamUrl && (
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Ad Block</span>
+                    <button
+                      type="button"
+                      onClick={() => setAdBlockEnabled(v => !v)}
+                      className={`relative w-10 h-5 rounded-full border transition-all ${
+                        adBlockEnabled ? 'bg-green-500/20 border-green-500/40' : 'bg-white/10 border-white/20'
+                      }`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                        adBlockEnabled ? 'translate-x-5' : ''
+                      }`} />
+                    </button>
+                    <span className={`text-[9px] font-black uppercase tracking-widest ${
+                      adBlockEnabled ? 'text-green-400' : 'text-gray-600'
+                    }`}>{adBlockEnabled ? 'ON' : 'OFF'}</span>
+                  </div>
+                )}
               </div>
               <div className="relative flex-1">
-                <iframe
-                  src={`https://streamimdb.ru/embed/movie/${movie.imdbId}`}
-                  className="w-full h-full"
-                  allowFullScreen
-                  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                  style={{ border: 'none' }}
-                />
-                {/* Transparent overlay to intercept ad clicks */}
-                <div
-                  className="absolute inset-0 z-10"
-                  style={{ pointerEvents: 'none' }}
-                  onClickCapture={(e) => {
-                    e.stopPropagation()
-                    window.focus()
-                  }}
-                />
+                {movie.streamUrl ? (() => {
+                  const ytId = extractYouTubeId(movie.streamUrl)
+                  const src = ytId
+                    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1`
+                    : movie.streamUrl
+                  return (
+                    <iframe
+                      src={src}
+                      className="w-full h-full"
+                      allowFullScreen
+                      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                      style={{ border: 'none' }}
+                    />
+                  )
+                })() : (
+                  <>
+                    <iframe
+                      src={`https://streamimdb.ru/embed/movie/${movie.imdbId}`}
+                      className="w-full h-full"
+                      allowFullScreen
+                      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                      style={{ border: 'none' }}
+                    />
+                    <div
+                      className="absolute inset-0 z-10"
+                      style={{ pointerEvents: 'none' }}
+                      onClickCapture={(e) => { e.stopPropagation(); window.focus() }}
+                    />
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
@@ -453,7 +505,7 @@ export default function MovieDetailPage() {
           <StatBadge icon={TrendingUp} label="Votes" value={movie.voteCount?.toLocaleString()} />
           <StatBadge icon={DollarSign} label="Budget" value={fmt(movie.budget)} />
           <StatBadge icon={DollarSign} label="Revenue" value={fmt(movie.revenue)} />
-          {movie.imdbId && (
+          {(movie.imdbId || movie.streamUrl) && (
             <button
               type="button"
               onClick={() => setPlaying(true)}
@@ -462,6 +514,24 @@ export default function MovieDetailPage() {
             >
               <Play className="w-5 h-5 fill-black text-black" />
             </button>
+          )}
+          {(user?.role === 'admin' || user?.canFlag) && (
+            <button
+              type="button"
+              onClick={toggleFlag}
+              disabled={flagBusy}
+              title={movie.redFlagged ? `Flagged by ${movie.flaggedBy || 'unknown'} — click to remove` : 'Red flag this movie'}
+              className={`flex items-center justify-center rounded-full w-10 h-10 shrink-0 border transition-all disabled:opacity-50 ${
+                movie.redFlagged
+                  ? 'bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30'
+                  : 'bg-white/5 border-white/10 text-gray-500 hover:border-red-400/50 hover:text-red-400'
+              }`}
+            >
+              <Flag className="w-4 h-4" fill={movie.redFlagged ? 'currentColor' : 'none'} />
+            </button>
+          )}
+          {movie.redFlagged && movie.flaggedBy && (
+            <span className="text-[10px] text-red-400/70 font-black uppercase tracking-widest">{movie.flaggedBy}</span>
           )}
         </div>
 

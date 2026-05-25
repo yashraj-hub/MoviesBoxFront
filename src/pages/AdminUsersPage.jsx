@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Loader from '../components/Loader'
-import { Minus, Plus, Trash2 } from 'lucide-react'
+import { Minus, Plus, Trash2, Flag } from 'lucide-react'
 
 const TOKEN_KEY = 'moviesbox_token'
 const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
@@ -122,6 +122,134 @@ function UserCard({ user, selected, onClick }) {
   )
 }
 
+function FlaggedMoviesPanel({ onClose, onNavigateMovie }) {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [urlInputs, setUrlInputs] = useState({})
+  const [busy, setBusy] = useState({})
+  const token = localStorage.getItem(TOKEN_KEY)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const data = await fetch(`${API_BASE}/admin/movies/flagged`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(r => r.json())
+      const list = data?.items || []
+      setItems(list)
+      const inputs = {}
+      list.forEach(m => { inputs[m.tmdbId] = m.streamUrl || '' })
+      setUrlInputs(inputs)
+    } catch {}
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { load() }, [])
+
+  const save = async (tmdbId, redFlagged) => {
+    setBusy(b => ({ ...b, [tmdbId]: true }))
+    try {
+      const r = await fetch(`${API_BASE}/movies/${tmdbId}/flag`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ redFlagged, streamUrl: redFlagged ? (urlInputs[tmdbId] || '') : '' }),
+      })
+      if (r.ok) {
+        if (!redFlagged) {
+          setItems(prev => prev.filter(m => m.tmdbId !== tmdbId))
+        } else {
+          setItems(prev => prev.map(m => m.tmdbId === tmdbId ? { ...m, streamUrl: urlInputs[tmdbId] || '' } : m))
+        }
+      }
+    } catch {}
+    finally { setBusy(b => ({ ...b, [tmdbId]: false })) }
+  }
+
+  return (
+    <div className="fixed inset-0 top-20 z-[100] bg-black/95 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="h-full overflow-y-auto pb-20">
+        <div className="sticky top-0 z-[110] bg-black/80 backdrop-blur-md border-b border-white/10 px-4 md:px-12 py-4">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <div className="flex items-center gap-3">
+              <Flag className="w-5 h-5 text-red-400" fill="currentColor" />
+              <h2 className="font-heading text-2xl md:text-3xl text-white">Flagged Movies</h2>
+              <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-red-400/20 text-red-400">{items.length}</span>
+            </div>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-white text-3xl font-light leading-none p-2 transition-all hover:rotate-90">×</button>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 md:px-12 py-8">
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[...Array(4)].map((_, i) => <div key={i} className="h-28 rounded-2xl bg-white/5 animate-pulse" />)}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="h-48 flex items-center justify-center rounded-2xl border border-dashed border-white/10 text-gray-500 text-sm italic">
+              No flagged movies
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {items.map(m => (
+                <div key={m.tmdbId} className="flex gap-4 p-4 rounded-2xl border border-red-500/20 bg-red-500/[0.04]">
+                  <div
+                    onClick={() => onNavigateMovie(m.tmdbId)}
+                    className="shrink-0 w-14 h-20 rounded-lg overflow-hidden border border-white/10 bg-white/5 cursor-pointer hover:border-yellow-400/40 transition-all"
+                  >
+                    {m.posterUrl
+                      ? <img src={m.posterUrl} alt={m.title} className="w-full h-full object-cover" loading="lazy" />
+                      : <div className="w-full h-full bg-white/5" />}
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col gap-3">
+                    <div
+                      onClick={() => onNavigateMovie(m.tmdbId)}
+                      className="text-white font-black text-sm truncate cursor-pointer hover:text-yellow-400 transition-colors"
+                    >
+                      {m.title}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={urlInputs[m.tmdbId] ?? ''}
+                        onChange={e => setUrlInputs(prev => ({ ...prev, [m.tmdbId]: e.target.value }))}
+                        placeholder="Stream URL (YouTube or other)"
+                        className="flex-1 min-w-0 rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-xs text-white placeholder:text-gray-600 focus:border-yellow-400/50 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => save(m.tmdbId, true)}
+                        disabled={busy[m.tmdbId]}
+                        className="shrink-0 px-3 py-2 rounded-xl bg-yellow-400/20 border border-yellow-400/40 text-yellow-400 text-[10px] font-black uppercase tracking-widest hover:bg-yellow-400/30 transition-all disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => save(m.tmdbId, false)}
+                        disabled={busy[m.tmdbId]}
+                        title="Remove flag"
+                        className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-500 hover:text-red-400 hover:border-red-400/40 transition-all disabled:opacity-50"
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {m.streamUrl && (
+                      <p className="text-[10px] text-green-400 font-black uppercase tracking-widest truncate">✓ Stream set: {m.streamUrl}</p>
+                    )}
+                    {m.flaggedBy && (
+                      <p className="text-[10px] text-red-400/60 font-black uppercase tracking-widest">🚩 {m.flaggedBy}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** Standard container for sections that should match the main app layout. */
 function AdminContainer({ children, className = "", id }) {
   return (
@@ -205,7 +333,7 @@ function LiveOnlinePanel({ items, users, minutes, onClose, onRowClick }) {
   )
 }
 
-function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateStatus, onUpdateTracking, onDelete, onNavigateMovie }) {
+function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateStatus, onUpdateTracking, onDelete, onNavigateMovie, onUpdateCanFlag }) {
   const [user, setUser] = useState(initialUser)
   const [myList, setMyList] = useState([])
   const [myListLoading, setMyListLoading] = useState(false)
@@ -215,7 +343,26 @@ function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateSt
   const [dayDetails, setDayDetails] = useState(null)
   const [dayLoading, setDayLoading] = useState(false)
   const [deviceOpen, setDeviceOpen] = useState(true)
+  const [newPassword, setNewPassword] = useState('')
+  const [pwBusy, setPwBusy] = useState(false)
+  const [pwMsg, setPwMsg] = useState(null)
   const token = localStorage.getItem(TOKEN_KEY)
+
+  const resetPassword = async () => {
+    if (pwBusy || !newPassword.trim()) return
+    setPwBusy(true)
+    setPwMsg(null)
+    try {
+      const r = await fetch(`${API_BASE}/admin/users/${user.id}/password`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newPassword }),
+      })
+      if (r.ok) { setPwMsg({ ok: true, text: 'Password updated' }); setNewPassword('') }
+      else { const d = await r.json().catch(() => ({})); setPwMsg({ ok: false, text: d.message || 'Failed' }) }
+    } catch { setPwMsg({ ok: false, text: 'Network error' }) }
+    finally { setPwBusy(false) }
+  }
 
   const deleteWatchHistory = async ({ dayKey } = {}) => {
     if (!user?.id) return
@@ -443,7 +590,7 @@ function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateSt
         </div>
 
         <div className="max-w-7xl mx-auto px-4 md:px-12 py-10 space-y-10">
-          <div className="flex items-center justify-end gap-6">
+          <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-3">
               <span className="text-[10px] uppercase tracking-widest text-gray-500 font-black">Active</span>
               <button
@@ -482,6 +629,21 @@ function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateSt
               </button>
             </div>
 
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] uppercase tracking-widest text-gray-500 font-black">Can Flag</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={user.canFlag === true}
+                onClick={() => onUpdateCanFlag(user.id, !user.canFlag)}
+                className={`relative w-11 h-6 rounded-full border transition-all ${
+                  user.canFlag ? 'bg-red-500/20 border-red-500/30' : 'bg-white/10 border-white/20'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white/80 transition-transform ${user.canFlag ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => {
@@ -493,6 +655,33 @@ function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateSt
             >
               <Trash2 size={18} />
             </button>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+            <p className="text-[11px] uppercase tracking-widest text-yellow-400 font-black mb-3">Reset Password</p>
+            <div className="flex items-center gap-3">
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => { setNewPassword(e.target.value); setPwMsg(null) }}
+                placeholder="New password (min 6 chars)"
+                className="flex-1 min-w-0 rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-yellow-400/50 focus:outline-none"
+                onKeyDown={e => e.key === 'Enter' && resetPassword()}
+              />
+              <button
+                type="button"
+                onClick={resetPassword}
+                disabled={pwBusy || !newPassword.trim()}
+                className="shrink-0 px-4 py-2 rounded-xl bg-yellow-400/20 border border-yellow-400/40 text-yellow-400 text-[10px] font-black uppercase tracking-widest hover:bg-yellow-400/30 transition-all disabled:opacity-50"
+              >
+                {pwBusy ? '...' : 'Set'}
+              </button>
+            </div>
+            {pwMsg && (
+              <p className={`mt-2 text-[11px] font-black uppercase tracking-widest ${pwMsg.ok ? 'text-green-400' : 'text-red-400'}`}>
+                {pwMsg.text}
+              </p>
+            )}
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
@@ -768,6 +957,7 @@ export default function AdminUsersPage() {
   const [liveWatchers, setLiveWatchers] = useState({ items: [], minutes: 12 })
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [liveOnlineOpen, setLiveOnlineOpen] = useState(false)
+  const [flaggedOpen, setFlaggedOpen] = useState(false)
   const token = localStorage.getItem(TOKEN_KEY)
 
   const loadData = async (isAutoRefresh = false) => {
@@ -851,6 +1041,15 @@ export default function AdminUsersPage() {
     setUsers((u) => u.map((x) => (x.id === userId ? data.user : x)))
   }
 
+  const updateCanFlag = async (id, canFlag) => {
+    const data = await fetch(`${API_BASE}/admin/users/${id}/can-flag`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ canFlag }),
+    }).then((r) => r.json())
+    setUsers((u) => u.map((x) => (x.id === id ? data.user : x)))
+  }
+
   const deleteUser = async (id) => {
     await fetch(`${API_BASE}/admin/users/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
     setUsers((u) => u.filter((x) => x.id !== id))
@@ -898,6 +1097,16 @@ export default function AdminUsersPage() {
             onClick={openLiveDetails}
             pressed={liveOnlineOpen}
           />
+        </div>
+        <div className="mb-8">
+          <button
+            type="button"
+            onClick={() => { setFlaggedOpen(true); setSelectedUserId(null); setLiveOnlineOpen(false) }}
+            className="flex items-center gap-2 px-5 py-3 rounded-2xl border border-red-500/30 bg-red-500/[0.06] text-red-400 hover:bg-red-500/10 transition-all"
+          >
+            <Flag className="w-4 h-4" fill="currentColor" />
+            <span className="text-[11px] font-black uppercase tracking-widest">Flagged Movies</span>
+          </button>
         </div>
       </AdminContainer>
 
@@ -955,6 +1164,13 @@ export default function AdminUsersPage() {
         </div>
       </AdminContainer>
 
+      {flaggedOpen && (
+        <FlaggedMoviesPanel
+          onClose={() => setFlaggedOpen(false)}
+          onNavigateMovie={(tmdbId) => { setFlaggedOpen(false); navigate(`/movie/${tmdbId}`) }}
+        />
+      )}
+
       {selectedUser && (
         <UserDetailPanel
           user={selectedUser}
@@ -962,6 +1178,7 @@ export default function AdminUsersPage() {
           onForceLogout={forceLogout}
           onUpdateStatus={updateStatus}
           onUpdateTracking={updateTracking}
+          onUpdateCanFlag={updateCanFlag}
           onDelete={deleteUser}
           onNavigateMovie={(tmdbId) => { setSelectedUserId(null); navigate(`/movie/${tmdbId}`) }}
         />

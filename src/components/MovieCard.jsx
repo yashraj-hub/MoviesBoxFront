@@ -45,7 +45,7 @@ export default function MovieCard({ movie, showTitle }) {
     let cancelled = false
     ;(async () => {
       try {
-        const r = await apiFetch(`my-list/check/${id}`)
+        const r = await apiFetch(`my-list/check/${id}?mediaType=movie`)
         const d = await r?.json()
         const inList = Boolean(d?.inList)
         savedCache.set(cacheKey, inList)
@@ -120,6 +120,7 @@ export default function MovieCard({ movie, showTitle }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tmdbId: Number(id),
+          mediaType: 'movie',
           title: movie.title || '',
           posterUrl: poster || '',
         }),
