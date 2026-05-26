@@ -3,9 +3,35 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import fallbackBackdropUrl from '../assets/hero.png'
 
 const TOKEN_KEY = 'moviesbox_token'
 const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
+const AUTH_BG_CACHE_KEY = 'moviesbox_auth_backgrounds'
+const FALLBACK_AUTH_BACKDROP = { id: 'fallback', backdrop_path: fallbackBackdropUrl, title: 'MoviesBox' }
+
+const readCachedAuthBackgrounds = () => {
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(AUTH_BG_CACHE_KEY) || 'null')
+    return Array.isArray(cached) && cached.length ? cached : null
+  } catch {
+    return null
+  }
+}
+
+const cacheAuthBackgrounds = (results) => {
+  try {
+    sessionStorage.setItem(AUTH_BG_CACHE_KEY, JSON.stringify(results.slice(0, 10)))
+  } catch {}
+}
+
+const preloadImage = (src) => new Promise((resolve, reject) => {
+  if (!src) return reject(new Error('Missing image source'))
+  const img = new Image()
+  img.onload = resolve
+  img.onerror = reject
+  img.src = src
+})
 
 const collectSignupContext = () => {
   const nav = navigator
@@ -62,22 +88,55 @@ export default function AuthPage() {
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [bgPosters, setBgPosters] = useState([])
+  const [bgPosters, setBgPosters] = useState(() => readCachedAuthBackgrounds() || [FALLBACK_AUTH_BACKDROP])
   const [bgIndex, setBgIndex] = useState(0)
 
   useEffect(() => {
-    fetch(`${API_BASE}/public/auth-backgrounds`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.results && d.results.length > 0) {
-          setBgPosters(d.results)
-        } else {
-          setBgPosters([{ id: 1, backdrop_path: '/assets/hero.png', title: 'MoviesBox' }])
+    fetch(`${API_BASE}/health`, { cache: 'no-store' }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    let retryTimer = null
+
+    const loadBackgrounds = async (attempt = 0) => {
+      const controller = new AbortController()
+      const timeout = window.setTimeout(() => controller.abort(), attempt === 0 ? 8000 : 15000)
+
+      try {
+        const res = await fetch(`${API_BASE}/public/auth-backgrounds`, {
+          signal: controller.signal,
+          cache: 'force-cache',
+        })
+        if (!res.ok) throw new Error('Background request failed')
+        const data = await res.json()
+        const results = Array.isArray(data.results)
+          ? data.results.filter(item => item?.backdrop_path)
+          : []
+
+        if (!results.length) return
+
+        await Promise.allSettled(results.slice(0, 3).map(item => preloadImage(item.backdrop_path)))
+        if (!alive) return
+
+        setBgPosters(results)
+        setBgIndex(0)
+        cacheAuthBackgrounds(results)
+      } catch {
+        if (alive && attempt === 0) {
+          retryTimer = window.setTimeout(() => loadBackgrounds(1), 3500)
         }
-      })
-      .catch(() => {
-        setBgPosters([{ id: 1, backdrop_path: '/assets/hero.png', title: 'MoviesBox' }])
-      })
+      } finally {
+        window.clearTimeout(timeout)
+      }
+    }
+
+    loadBackgrounds()
+
+    return () => {
+      alive = false
+      if (retryTimer) window.clearTimeout(retryTimer)
+    }
   }, [])
 
   useEffect(() => {
@@ -125,6 +184,13 @@ export default function AuthPage() {
       
       {/* Cinematic Background - Brighter Overlays */}
       <div className="absolute inset-0 z-0">
+        <img
+          src={fallbackBackdropUrl}
+          className="absolute inset-0 h-full w-full object-cover"
+          alt=""
+          loading="eager"
+          fetchPriority="high"
+        />
         <AnimatePresence mode="sync">
           <motion.div
             key={bgIndex}
@@ -135,10 +201,17 @@ export default function AuthPage() {
             className="absolute inset-0 h-full w-full"
           >
             <img
-              src={bgPosters[bgIndex]?.backdrop_path}
+              src={bgPosters[bgIndex]?.backdrop_path || fallbackBackdropUrl}
               className="h-full w-full object-cover"
               alt=""
-              onError={(e) => { e.target.src = '/assets/hero.png' }}
+              onError={(e) => {
+                if (!e.currentTarget.dataset.fallbackApplied) {
+                  e.currentTarget.dataset.fallbackApplied = 'true'
+                  e.currentTarget.src = fallbackBackdropUrl
+                }
+              }}
+              loading="eager"
+              fetchPriority="high"
             />
           </motion.div>
         </AnimatePresence>
