@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { flushSync } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import MovieCard from '../components/MovieCard'
 import SearchCollectionCard from '../components/SearchCollectionCard'
 import TVShowCard from '../components/TVShowCard'
@@ -9,6 +10,34 @@ import { peekSearchOpenFlags, clearSearchOpenFlags } from '../searchFocusFlags'
 const TOKEN_KEY = 'moviesbox_token'
 const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
 const SEARCH_DEBOUNCE_MS = 400
+const SEARCH_CACHE_KEY = 'moviesbox_search_state_v1'
+
+function readSearchCache() {
+  try {
+    const raw = sessionStorage.getItem(SEARCH_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function writeSearchCache(state) {
+  try {
+    sessionStorage.setItem(SEARCH_CACHE_KEY, JSON.stringify(state))
+  } catch {
+    // ignore storage limits/private mode
+  }
+}
+
+function clearSearchCache() {
+  try {
+    sessionStorage.removeItem(SEARCH_CACHE_KEY)
+  } catch {
+    // ignore
+  }
+}
 
 function releaseTs(m) {
   const d = m.releaseDate
@@ -58,22 +87,27 @@ export default function SearchPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const inputRef = useRef(null)
+  const [initialSearch] = useState(() => readSearchCache())
 
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState([])
-  const [tvResults, setTvResults] = useState([])
-  const [collectionGroups, setCollectionGroups] = useState([])
-  const [otherResults, setOtherResults] = useState([])
+  const [query, setQuery] = useState(initialSearch?.query || '')
+  const [results, setResults] = useState(Array.isArray(initialSearch?.results) ? initialSearch.results : [])
+  const [tvResults, setTvResults] = useState(Array.isArray(initialSearch?.tvResults) ? initialSearch.tvResults : [])
+  const [collectionGroups, setCollectionGroups] = useState(Array.isArray(initialSearch?.collectionGroups) ? initialSearch.collectionGroups : [])
+  const [otherResults, setOtherResults] = useState(Array.isArray(initialSearch?.otherResults) ? initialSearch.otherResults : [])
   const [loading, setLoading] = useState(false)
-  const [searched, setSearched] = useState(false)
-  const [source, setSource] = useState('')
-  const [tvSource, setTvSource] = useState('')
-  const [total, setTotal] = useState(null)
-  const [tvTotal, setTvTotal] = useState(null)
-  const [newestFirst, setNewestFirst] = useState(false)
+  const [searched, setSearched] = useState(Boolean(initialSearch?.searched))
+  const [source, setSource] = useState(initialSearch?.source || '')
+  const [tvSource, setTvSource] = useState(initialSearch?.tvSource || '')
+  const [total, setTotal] = useState(initialSearch?.total ?? null)
+  const [tvTotal, setTvTotal] = useState(initialSearch?.tvTotal ?? null)
+  const [newestFirst, setNewestFirst] = useState(Boolean(initialSearch?.newestFirst))
 
   const debounceTimerRef = useRef(null)
   const abortRef = useRef(null)
+  const tvRailRef = useRef(null)
+  const skipInitialSearchRef = useRef(Boolean(initialSearch?.searched && initialSearch?.query?.trim()?.length >= 2))
+  const restoredQueryRef = useRef(initialSearch?.searched ? initialSearch.query || '' : '')
+  const latestSearchRef = useRef(null)
 
   const clearResults = useCallback(() => {
     setResults([])
@@ -86,6 +120,7 @@ export default function SearchPage() {
     setTvTotal(null)
     setSearched(false)
     setLoading(false)
+    clearSearchCache()
   }, [])
 
   const startSearch = useCallback((rawQ) => {
@@ -152,6 +187,15 @@ export default function SearchPage() {
       return
     }
 
+    if (skipInitialSearchRef.current) {
+      skipInitialSearchRef.current = false
+      return
+    }
+
+    if (restoredQueryRef.current && restoredQueryRef.current === query) {
+      return
+    }
+
     debounceTimerRef.current = setTimeout(() => {
       startSearch(query)
     }, SEARCH_DEBOUNCE_MS)
@@ -162,13 +206,66 @@ export default function SearchPage() {
     }
   }, [query, startSearch, clearResults])
 
+  useEffect(() => {
+    latestSearchRef.current = {
+      query,
+      results,
+      tvResults,
+      collectionGroups,
+      otherResults,
+      source,
+      tvSource,
+      total,
+      tvTotal,
+      newestFirst,
+      searched,
+      scrollY: window.scrollY || 0,
+    }
+
+    if (!searched || query.trim().length < 2 || loading) return
+    writeSearchCache(latestSearchRef.current)
+  }, [
+    query,
+    results,
+    tvResults,
+    collectionGroups,
+    otherResults,
+    source,
+    tvSource,
+    total,
+    tvTotal,
+    newestFirst,
+    searched,
+    loading,
+  ])
+
+  useEffect(() => {
+    if (!initialSearch?.searched || !Number.isFinite(Number(initialSearch.scrollY))) return undefined
+    const y = Number(initialSearch.scrollY)
+    const raf = requestAnimationFrame(() => {
+      window.scrollTo(0, y)
+      window.setTimeout(() => window.scrollTo(0, y), 80)
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [initialSearch])
+
+  useEffect(() => () => {
+    if (!latestSearchRef.current?.searched || latestSearchRef.current.query.trim().length < 2) return
+    writeSearchCache({
+      ...latestSearchRef.current,
+      scrollY: window.scrollY || 0,
+    })
+  }, [])
+
   const handleSubmit = (e) => {
     e.preventDefault()
     clearTimeout(debounceTimerRef.current)
+    restoredQueryRef.current = ''
     startSearch(query)
   }
 
   const handleQueryChange = (value) => {
+    restoredQueryRef.current = ''
     setQuery(value)
     if (value.trim().length < 2) {
       abortRef.current?.abort()
@@ -176,6 +273,15 @@ export default function SearchPage() {
       clearResults()
     }
   }
+
+  const scrollTvRail = useCallback((direction) => {
+    const rail = tvRailRef.current
+    if (!rail) return
+    rail.scrollBy({
+      left: direction * Math.max(320, rail.clientWidth * 0.86),
+      behavior: 'smooth',
+    })
+  }, [])
 
   useLayoutEffect(() => {
     const { focus: fromStorage, seed } = peekSearchOpenFlags()
@@ -310,24 +416,52 @@ export default function SearchPage() {
               : (
                 <div className="space-y-12 md:space-y-14">
                   {tvResults.length > 0 && (
-                    <section className="space-y-5 md:space-y-6">
-                      <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+                    <section className="-mx-4 space-y-5 border-y border-yellow-400/10 bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.11),transparent_34%),linear-gradient(135deg,rgba(250,204,21,0.055),rgba(255,255,255,0.015)_45%,transparent)] px-4 py-6 md:-mx-12 md:space-y-6 md:px-12">
+                      <div className="flex items-center justify-between gap-3 border-b border-yellow-400/15 pb-3">
                         <div className="min-w-0">
-                          <h2 className="text-base font-black uppercase tracking-[0.14em] text-red-400 md:text-lg">
+                          <h2 className="text-base font-black uppercase tracking-[0.14em] text-yellow-300 md:text-lg">
                             TV Shows
                           </h2>
                           <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-gray-500">
                             {tvTotal != null ? `${tvTotal} results` : `${tvResults.length} titles`}
                           </p>
                         </div>
+                        {tvResults.length > 4 ? (
+                          <div className="flex shrink-0 items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => scrollTvRail(-1)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-yellow-400/20 bg-black/35 text-yellow-200 transition hover:border-yellow-400/50 hover:text-yellow-400"
+                              aria-label="Previous TV shows"
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => scrollTvRail(1)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-yellow-400/20 bg-black/35 text-yellow-200 transition hover:border-yellow-400/50 hover:text-yellow-400"
+                              aria-label="Next TV shows"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
-                      <div className={gridClass}>
+                      <div
+                        ref={tvRailRef}
+                        className="scrollbar-hide flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 pr-1"
+                      >
                         {tvResults.map((show) => (
-                          <TVShowCard
+                          <div
                             key={show.id}
-                            show={show}
-                            titleClassName="text-red-400 group-hover:text-red-300"
-                          />
+                            className="w-[78vw] max-w-[360px] flex-none snap-start sm:w-[44vw] lg:w-[calc((100%-3rem)/4)] lg:max-w-none"
+                          >
+                            <TVShowCard
+                              show={show}
+                              variant="wide"
+                              titleClassName="text-yellow-100 group-hover:text-yellow-300"
+                            />
+                          </div>
                         ))}
                       </div>
                     </section>

@@ -108,6 +108,7 @@ export default function TVPlayerPage() {
   const [relLoading, setRelLoading] = useState(false)
   const [inMyListState, setInMyListState] = useState(false)
   const [myListBusy, setMyListBusy] = useState(false)
+  const [adBlockEnabled, setAdBlockEnabled] = useState(true)
   const [seasonDropdownOpen, setSeasonDropdownOpen] = useState(false)
   const [visibleEpisodeCount, setVisibleEpisodeCount] = useState(4)
   const [episodeRailNav, setEpisodeRailNav] = useState({ canPrev: false, canNext: false })
@@ -163,6 +164,24 @@ export default function TVPlayerPage() {
       }),
     [show?.imdbId, selectedSeason, selectedEpisode],
   )
+
+  // Match the movie player: suppress popup attempts from iframe ads and refocus this tab.
+  useEffect(() => {
+    if (!playerUrl || !adBlockEnabled) return undefined
+
+    const originalOpen = window.open
+    window.open = () => null
+
+    const onBlur = () => {
+      setTimeout(() => window.focus(), 100)
+    }
+    window.addEventListener('blur', onBlur)
+
+    return () => {
+      window.open = originalOpen
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [playerUrl, adBlockEnabled])
 
   const loadRelated = useCallback(
     async (pageNumber) => {
@@ -556,6 +575,28 @@ export default function TVPlayerPage() {
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-gray-400">
+                      {playerUrl ? (
+                        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-2">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Ad Block</span>
+                          <button
+                            type="button"
+                            onClick={() => setAdBlockEnabled((value) => !value)}
+                            className={`relative h-5 w-10 rounded-full border transition-all ${
+                              adBlockEnabled ? 'border-green-500/40 bg-green-500/20' : 'border-white/20 bg-white/10'
+                            }`}
+                            aria-label={adBlockEnabled ? 'Disable ad block' : 'Enable ad block'}
+                          >
+                            <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                              adBlockEnabled ? 'translate-x-5' : ''
+                            }`} />
+                          </button>
+                          <span className={`text-[9px] font-black uppercase tracking-widest ${
+                            adBlockEnabled ? 'text-green-400' : 'text-gray-600'
+                          }`}>
+                            {adBlockEnabled ? 'ON' : 'OFF'}
+                          </span>
+                        </div>
+                      ) : null}
                       <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/40 px-3 py-2">
                         <Clock className="h-3.5 w-3.5 text-yellow-400" />
                         {selectedEpisodeMeta?.runtime ? `${selectedEpisodeMeta.runtime}m` : 'Runtime unknown'}
@@ -571,15 +612,22 @@ export default function TVPlayerPage() {
                 <div className="relative bg-black">
                   <div className="relative aspect-video w-full overflow-hidden">
                     {playerUrl ? (
-                      <iframe
-                        key={`${show?.id || tmdbId}-${selectedSeason}-${selectedEpisode}`}
-                        src={playerUrl}
-                        title={show?.name || 'TV Player'}
-                        className="absolute inset-0 h-full w-full"
-                        allowFullScreen
-                        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                        style={{ border: 'none' }}
-                      />
+                      <>
+                        <iframe
+                          key={`${show?.id || tmdbId}-${selectedSeason}-${selectedEpisode}`}
+                          src={playerUrl}
+                          title={show?.name || 'TV Player'}
+                          className="absolute inset-0 h-full w-full"
+                          allowFullScreen
+                          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                          style={{ border: 'none' }}
+                        />
+                        <div
+                          className="absolute inset-0 z-10"
+                          style={{ pointerEvents: 'none' }}
+                          onClickCapture={(e) => { e.stopPropagation(); window.focus() }}
+                        />
+                      </>
                     ) : (
                       <div className="flex h-full w-full items-center justify-center px-6 text-center text-sm text-gray-500">
                         Set `VITE_TV_PLAYER_BASE_URL` to load the embedded player here.

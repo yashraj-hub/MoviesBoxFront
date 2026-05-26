@@ -133,7 +133,7 @@ export default function TVShelfRail({ shelfKey, label }) {
       {loading ? (
         <div className="px-4 md:px-12 flex gap-4 overflow-hidden">
           {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="w-[160px] flex-none">
+            <div key={index} className="w-[180px] flex-none sm:w-[220px] md:w-[250px] lg:w-[280px]">
               <div className="aspect-[2/3] rounded-2xl bg-white/5 animate-pulse" />
             </div>
           ))}
@@ -149,7 +149,7 @@ export default function TVShelfRail({ shelfKey, label }) {
             className="scrollbar-hide px-4 md:px-12 flex gap-4 overflow-x-auto pb-2 pr-1 snap-x snap-mandatory"
           >
             {shows.map((show) => (
-              <div key={show.id} className="w-[160px] flex-none snap-start sm:w-[180px] md:w-[200px] lg:w-[220px]">
+              <div key={show.id} className="w-[180px] flex-none snap-start sm:w-[220px] md:w-[250px] lg:w-[280px]">
                 <TVShowCard show={show} showSaveButton={false} />
               </div>
             ))}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, ListFilter, Search, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { apiFetch } from '../utils/apiFetch'
 import TVShowCard from '../components/TVShowCard'
@@ -8,6 +8,12 @@ import { TV_CHANNELS } from '../config/tvChannels'
 import { TV_SHELVES } from '../config/tvShelves'
 
 const LIMIT = 20
+const SEARCH_DEBOUNCE_MS = 350
+const SORT_OPTIONS = [
+  { key: 'topRated', label: 'Top Rated' },
+  { key: 'latest', label: 'Latest' },
+  { key: 'mostReviewed', label: 'Most Reviewed' },
+]
 
 export default function TVShelfPage() {
   const { shelfKey } = useParams()
@@ -22,16 +28,37 @@ export default function TVShelfPage() {
   const [fetching, setFetching] = useState(false)
   const [bgIndex, setBgIndex] = useState(0)
   const [hasMore, setHasMore] = useState(true)
+  const [sortKey, setSortKey] = useState('topRated')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const loaderRef = useRef(null)
   const bgTimer = useRef(null)
   const fetchingRef = useRef(false)
   const pageRef = useRef(1)
   const totalPagesRef = useRef(1)
+  const activeShelfRef = useRef(null)
+  const isSearching = debouncedSearch.trim().length >= 2
 
   const fetchShelf = useCallback(
-    async (p) => apiFetch(`tv/discover/${shelfKey}?page=${p}&limit=${LIMIT}`).then((r) => r?.json()),
-    [shelfKey],
+    async (p) => {
+      const params = new URLSearchParams({
+        page: String(p),
+        limit: String(LIMIT),
+        sort: sortKey,
+      })
+      const q = debouncedSearch.trim()
+      if (q.length >= 2) params.set('q', q)
+      return apiFetch(`tv/discover/${shelfKey}?${params.toString()}`).then((r) => r?.json())
+    },
+    [shelfKey, sortKey, debouncedSearch],
   )
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim())
+    }, SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [searchQuery])
 
   useEffect(() => {
     if (!shelf) return
@@ -43,7 +70,10 @@ export default function TVShelfPage() {
     pageRef.current = 1
     totalPagesRef.current = 1
     fetchingRef.current = false
-    window.scrollTo(0, 0)
+    if (activeShelfRef.current !== shelfKey) {
+      window.scrollTo(0, 0)
+      activeShelfRef.current = shelfKey
+    }
 
     fetchShelf(1)
       .then((data) => {
@@ -154,7 +184,7 @@ export default function TVShelfPage() {
             <img
               src={channel.logoSrc}
               alt={channel.label}
-              className={`w-full max-w-[540px] object-contain drop-shadow-[0_18px_35px_rgba(0,0,0,0.72)] ${channel.logoClassName || ''}`}
+              className={`w-[min(52vw,300px)] max-h-[18vh] object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.72)] ${channel.logoClassName || ''}`}
               loading="eager"
             />
           ) : (
@@ -168,17 +198,95 @@ export default function TVShelfPage() {
       </div>
 
       <div className="px-4 md:px-12 mt-8">
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              setDebouncedSearch(searchQuery.trim())
+            }}
+            className="relative w-full lg:max-w-md"
+          >
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-yellow-400" />
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={`Search ${currentTitle}`}
+              className="h-12 w-full rounded-full border border-white/10 bg-white/[0.06] pl-11 pr-11 text-sm font-semibold text-white outline-none backdrop-blur-md placeholder:text-gray-500 focus:border-yellow-400/60"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('')
+                  setDebouncedSearch('')
+                }}
+                className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-white/10 hover:text-white"
+                aria-label="Clear channel search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </form>
+
+          <label className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-gray-300 backdrop-blur-md">
+            <ListFilter className="h-3.5 w-3.5 text-yellow-400" />
+            <span>Sort</span>
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value)}
+              className="max-w-[150px] bg-transparent text-[10px] font-black uppercase tracking-[0.18em] text-white outline-none"
+              aria-label="Sort TV shows"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.key} value={option.key} className="bg-[#111] text-white">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {isSearching ? (
+          <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-yellow-400/10 bg-yellow-400/[0.04] px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-200/80">
+              Searching {currentTitle}: <span className="text-white">"{debouncedSearch.trim()}"</span>
+            </p>
+            {!loading ? (
+              <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
+                {shows.length} shown
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
         {loading ? (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 md:gap-4 lg:grid-cols-5">
             {Array.from({ length: 20 }).map((_, i) => (
               <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-white/5" />
             ))}
           </div>
-        ) : (
+        ) : shows.length > 0 ? (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 md:gap-4 lg:grid-cols-5">
             {shows.map((show) => (
               <TVShowCard key={show.id} show={show} />
             ))}
+          </div>
+        ) : isSearching ? (
+          <div className="flex min-h-[220px] items-center justify-center rounded-3xl border border-white/10 bg-white/[0.03] px-6 text-center">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-400/70">
+                No channel match
+              </p>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-gray-400">
+                No shows in {currentTitle} match "{debouncedSearch.trim()}". Try another title from this channel.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex min-h-[220px] items-center justify-center rounded-3xl border border-white/10 bg-white/[0.03] px-6 text-center">
+            <p className="text-sm text-gray-500">No shows available for this channel.</p>
           </div>
         )}
 

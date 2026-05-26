@@ -12,6 +12,8 @@ import SearchPage from './pages/SearchPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import MovieDetailPage from './pages/MovieDetailPage'
 import ProductionHousePage from './pages/ProductionHousePage'
+import UniversesPage from './pages/UniversesPage'
+import UniversePage from './pages/UniversePage'
 import GenrePage from './pages/GenrePage'
 import PersonMoviesPage from './pages/PersonMoviesPage'
 import CompanyMoviesPage from './pages/CompanyMoviesPage'
@@ -52,6 +54,8 @@ function App() {
                 <Route path="/admin" element={<AdminUsersPage />} />
                 <Route path="/movie/:tmdbId" element={<MovieDetailPage />} />
                 <Route path="/production-house/:category/:companyId" element={<ProductionHousePage />} />
+                <Route path="/universes" element={<UniversesPage />} />
+                <Route path="/universes/:universeKey" element={<UniversePage />} />
                 <Route path="/genre" element={<GenrePage />} />
                 <Route path="/person" element={<PersonMoviesPage />} />
                 <Route path="/company" element={<CompanyMoviesPage />} />

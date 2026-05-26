@@ -30,7 +30,7 @@ export default function TVChannelStrip() {
               key={channel.key}
               type="button"
               onClick={() => navigate(`/tv-shelf/${channel.key}`)}
-              className="group relative flex h-[112px] min-w-[150px] snap-start flex-col items-center justify-center rounded-none border-0 bg-transparent px-2 py-1 text-center transition-all duration-300 hover:-translate-y-0.5"
+              className="group relative flex h-[92px] min-w-[150px] snap-start flex-col items-center justify-center rounded-none border-0 bg-transparent px-2 py-1 text-center transition-all duration-300 hover:-translate-y-0.5"
               aria-label={channel.label}
               title={channel.label}
             >
@@ -41,9 +41,6 @@ export default function TVChannelStrip() {
                 loading="lazy"
                 draggable="false"
               />
-              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.22em] text-gray-500 transition-colors group-hover:text-gray-300">
-                {channel.subtitle}
-              </p>
             </button>
           ))}
         </div>

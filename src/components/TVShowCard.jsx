@@ -6,10 +6,17 @@ import { useAuth } from '../context/AuthContext'
 
 const savedCache = new Map()
 
-export default function TVShowCard({ show, titleClassName = 'text-white', showSaveButton = true }) {
+export default function TVShowCard({
+  show,
+  titleClassName = 'text-white',
+  showSaveButton = true,
+  variant = 'poster',
+}) {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const isWide = variant === 'wide'
   const poster = show.posterUrl || show.backdropUrl || null
+  const image = isWide ? show.backdropUrl || show.posterUrl || null : poster
   const id = show.id
   const year = (show.firstAirDate || '').slice(0, 4) || null
   const [saved, setSaved] = useState(false)
@@ -121,15 +128,15 @@ export default function TVShowCard({ show, titleClassName = 'text-white', showSa
 
         {pulse ? <div className="pointer-events-none absolute inset-0 ring-4 ring-yellow-400/20 rounded-2xl" /> : null}
 
-        {poster ? (
+        {image ? (
           <img
-            src={poster}
+            src={image}
             alt={show.name || ''}
-            className="aspect-[2/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className={`${isWide ? 'aspect-[16/10]' : 'aspect-[2/3]'} w-full object-cover transition-transform duration-500 group-hover:scale-105`}
             loading="lazy"
           />
         ) : (
-          <div className="flex aspect-[2/3] w-full items-center justify-center bg-white/5 text-[10px] text-gray-600">
+          <div className={`flex ${isWide ? 'aspect-[16/10]' : 'aspect-[2/3]'} w-full items-center justify-center bg-white/5 text-[10px] text-gray-600`}>
             No image
           </div>
         )}
