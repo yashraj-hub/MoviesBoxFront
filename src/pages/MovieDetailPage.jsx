@@ -202,6 +202,41 @@ function MovieHero({ movie, onBack, myList }) {
   )
 }
 
+// Streamimdb player
+function MoviePlayerIframe({ imdbId, src, duration }) {
+  const iframeRef = useRef(null)
+  const url = src || `https://streamimdb.ru/embed/movie/${imdbId}`
+  return (
+    <div className="relative w-full h-full bg-black">
+      <iframe
+        ref={iframeRef}
+        src={url}
+        className="absolute inset-0 w-full h-full"
+        allowFullScreen
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        style={{ border: 'none' }}
+      />
+    </div>
+  )
+}
+
+// YouTube player
+function YouTubePlayerIframe({ src, duration }) {
+  const iframeRef = useRef(null)
+  return (
+    <div className="relative w-full h-full bg-black">
+      <iframe
+        ref={iframeRef}
+        src={src}
+        className="absolute inset-0 w-full h-full"
+        allowFullScreen
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        style={{ border: 'none' }}
+      />
+    </div>
+  )
+}
+
 // Extract YouTube video ID from watch URL, embed URL, or iframe HTML
 function extractYouTubeId(input) {
   if (!input) return null
@@ -453,32 +488,13 @@ export default function MovieDetailPage() {
                 {movie.streamUrl ? (() => {
                   const ytId = extractYouTubeId(movie.streamUrl)
                   const src = ytId
-                    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1`
+                    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`
                     : movie.streamUrl
-                  return (
-                    <iframe
-                      src={src}
-                      className="w-full h-full"
-                      allowFullScreen
-                      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                      style={{ border: 'none' }}
-                    />
-                  )
+                  return ytId
+                    ? <YouTubePlayerIframe src={src} title={movie.title} onClose={() => setPlaying(false)} duration={movie.runtime ? movie.runtime * 60 : 0} />
+                    : <MoviePlayerIframe src={src} title={movie.title} onClose={() => setPlaying(false)} duration={movie.runtime ? movie.runtime * 60 : 0} />
                 })() : (
-                  <>
-                    <iframe
-                      src={`https://streamimdb.ru/embed/movie/${movie.imdbId}`}
-                      className="w-full h-full"
-                      allowFullScreen
-                      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                      style={{ border: 'none' }}
-                    />
-                    <div
-                      className="absolute inset-0 z-10"
-                      style={{ pointerEvents: 'none' }}
-                      onClickCapture={(e) => { e.stopPropagation(); window.focus() }}
-                    />
-                  </>
+                  <MoviePlayerIframe imdbId={movie.imdbId} title={movie.title} onClose={() => setPlaying(false)} duration={movie.runtime ? movie.runtime * 60 : 0} />
                 )}
               </div>
             </div>

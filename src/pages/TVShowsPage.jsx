@@ -1,6 +1,7 @@
 import TVHeroSection from '../components/TVHeroSection'
 import TVChannelStrip from '../components/TVChannelStrip'
 import TVShelfRail from '../components/TVShelfRail'
+import ContinueWatchingRow from '../components/ContinueWatchingRow'
 import { TV_SHELVES } from '../config/tvShelves'
 
 const SHELF_ORDER = [
@@ -50,6 +51,8 @@ export default function TVShowsPage() {
       <TVHeroSection />
 
       <TVChannelStrip />
+
+      <ContinueWatchingRow title="Continue Watching" endpoint="continue-watching" />
 
       <div className="mt-8">
         {shelves.map((shelf) => (
