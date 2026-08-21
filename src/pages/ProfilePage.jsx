@@ -52,7 +52,19 @@ export default function ProfilePage() {
     setListLoading(true)
     apiFetch('my-list')
       .then((r) => (r ? r.json() : null))
-      .then((d) => setListItems(Array.isArray(d?.items) ? d.items : []))
+      .then((d) => {
+        const byKey = new Map()
+        const addItems = (items = []) => {
+          items.forEach((item) => {
+            const mediaType = item.mediaType === 'tv' ? 'tv' : 'movie'
+            const key = `${mediaType}:${item.tmdbId}`
+            if (!byKey.has(key)) byKey.set(key, { ...item, mediaType })
+          })
+        }
+        if (Array.isArray(d?.lists)) d.lists.forEach((list) => addItems(list.items))
+        else addItems(Array.isArray(d?.items) ? d.items : [])
+        setListItems([...byKey.values()].sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt)))
+      })
       .catch(() => setListItems([]))
       .finally(() => setListLoading(false))
   }, [])
@@ -353,7 +365,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-2.5">
                 {listItems.map((m) => (
                   <button
-                    key={m.tmdbId}
+                    key={`${m.mediaType || 'movie'}-${m.tmdbId}`}
                     type="button"
                     onClick={() => navigate((m.mediaType || 'movie') === 'tv' ? `/tv/${m.tmdbId}` : `/movie/${m.tmdbId}`)}
                     className="group text-left w-full p-0 border-0 bg-transparent cursor-pointer rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-400/60"

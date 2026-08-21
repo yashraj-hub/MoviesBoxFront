@@ -393,7 +393,9 @@ const Navbar = ({ user, onLogout }) => {
                 <button
                   type="button"
                   onClick={() => { navigate('/tv-shows'); setMobileOpen(false) }}
-                  className="text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition mb-1 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
+                  className={`text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition mb-1 ${
+                    isTVRoute ? 'bg-yellow-400 text-black' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                  }`}
                 >
                   TV Shows
                 </button>

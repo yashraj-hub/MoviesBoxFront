@@ -80,6 +80,13 @@ const collectSignupContext = () => {
   }
 }
 
+// Silently wake up the backend (Render cold start fix)
+const warmUpBackend = async () => {
+  try {
+    await fetch(`${API_BASE}/health`, { method: 'GET', cache: 'no-store' })
+  } catch {}
+}
+
 export default function AuthPage() {
   const { setUser } = useAuth()
   const navigate = useNavigate()
@@ -88,8 +95,29 @@ export default function AuthPage() {
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [serverReady, setServerReady] = useState(false)
   const [bgPosters, setBgPosters] = useState(() => readCachedAuthBackgrounds() || [FALLBACK_AUTH_BACKDROP])
   const [bgIndex, setBgIndex] = useState(0)
+
+  // Wake up backend immediately on page load
+  useEffect(() => {
+    let alive = true
+    const ping = async (attempt = 0) => {
+      try {
+        const controller = new AbortController()
+        const t = window.setTimeout(() => controller.abort(), 8000)
+        const res = await fetch(`${API_BASE}/health`, { method: 'GET', cache: 'no-store', signal: controller.signal })
+        window.clearTimeout(t)
+        if (alive && res.ok) setServerReady(true)
+      } catch {
+        if (alive && attempt < 5) {
+          window.setTimeout(() => ping(attempt + 1), 3000)
+        }
+      }
+    }
+    ping()
+    return () => { alive = false }
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -97,12 +125,11 @@ export default function AuthPage() {
 
     const loadBackgrounds = async (attempt = 0) => {
       const controller = new AbortController()
-      const timeout = window.setTimeout(() => controller.abort(), attempt === 0 ? 5000 : 10000)
+      const timeout = window.setTimeout(() => controller.abort(), attempt === 0 ? 15000 : 20000)
 
       try {
         const res = await fetch(`${API_BASE}/public/auth-backgrounds`, {
           signal: controller.signal,
-          // Use default cache behavior but prioritize speed
           cache: 'default',
         })
         if (!res.ok) throw new Error('Background request failed')
@@ -113,19 +140,16 @@ export default function AuthPage() {
 
         if (!results.length || !alive) return
 
-        // Set results immediately without waiting for preloads
-        // This ensures the user sees something as fast as possible
         setBgPosters(results)
         setBgIndex(0)
         cacheAuthBackgrounds(results)
 
-        // Preload in the background without blocking
         results.slice(0, 5).forEach(item => {
           preloadImage(item.backdrop_path).catch(() => {})
         })
       } catch (err) {
-        if (alive && attempt < 2) {
-          const delay = attempt === 0 ? 1000 : 3000
+        if (alive && attempt < 3) {
+          const delay = attempt === 0 ? 2000 : 5000
           retryTimer = window.setTimeout(() => loadBackgrounds(attempt + 1), delay)
         }
       } finally {
@@ -154,16 +178,10 @@ export default function AuthPage() {
     if (error) setError('') // Clear error on change for better UX
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (loading) return
-    
-    setLoading(true)
-    setError('')
-
-    // Add a timeout for the login request to prevent indefinite hanging
+  const doAuthRequest = async (attempt = 0) => {
     const controller = new AbortController()
-    const timeout = window.setTimeout(() => controller.abort(), 12000)
+    // 30s timeout — enough for Render cold start + DB connect
+    const timeout = window.setTimeout(() => controller.abort(), 30000)
 
     try {
       const endpoint = mode === 'login' ? '/auth/login' : '/auth/signup'
@@ -188,23 +206,36 @@ export default function AuthPage() {
         throw new Error('Server responded with an invalid format')
       }
 
-      if (!res.ok) {
-        throw new Error(data.message || 'Authentication failed')
-      }
+      if (!res.ok) throw new Error(data.message || 'Authentication failed')
 
       localStorage.setItem(TOKEN_KEY, data.token)
       setUser(data.user)
       navigate('/', { replace: true })
     } catch (err) {
       if (err.name === 'AbortError') {
-        setError('Request timed out. Please try again.')
+        // Auto-retry once on timeout (backend was waking up)
+        if (attempt < 1) {
+          setError('Server is waking up, retrying...')
+          await warmUpBackend()
+          window.clearTimeout(timeout)
+          return doAuthRequest(attempt + 1)
+        }
+        setError('Server is taking too long. Please try again in a moment.')
       } else {
         setError(err.message || 'An unexpected error occurred')
       }
     } finally {
       window.clearTimeout(timeout)
-      setLoading(false)
     }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (loading) return
+    setLoading(true)
+    setError('')
+    await doAuthRequest()
+    setLoading(false)
   }
 
   return (
@@ -317,6 +348,7 @@ export default function AuthPage() {
                       value={form.fullName}
                       onChange={handleChange}
                       required
+                      autoComplete="name"
                       className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-2xl px-5 text-sm text-white outline-none focus:border-yellow-400/50 focus:bg-white/[0.06] transition-all placeholder:text-gray-600"
                     />
                   </motion.div>
@@ -335,6 +367,7 @@ export default function AuthPage() {
                   value={mode === 'login' ? form.identifier : form.email}
                   onChange={handleChange}
                   required
+                  autoComplete={mode === 'login' ? 'username' : 'email'}
                   className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-2xl px-5 text-sm text-white outline-none focus:border-yellow-400/50 focus:bg-white/[0.06] transition-all placeholder:text-gray-600"
                 />
               </div>
@@ -359,7 +392,7 @@ export default function AuthPage() {
                     value={form.password}
                     onChange={handleChange}
                     required
-                    autoComplete="new-password"
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                     className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-2xl px-5 pr-12 text-sm text-white outline-none focus:border-yellow-400/50 focus:bg-white/[0.06] transition-all placeholder:text-gray-600"
                   />
                   <button
@@ -380,6 +413,12 @@ export default function AuthPage() {
                 >
                   {error}
                 </motion.div>
+              )}
+
+              {!serverReady && !loading && (
+                <p className="text-[9px] text-yellow-400/40 text-center tracking-widest uppercase">
+                  Connecting to server...
+                </p>
               )}
 
               <button

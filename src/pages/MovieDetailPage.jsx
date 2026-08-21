@@ -6,6 +6,7 @@ import { apiFetch } from '../utils/apiFetch'
 import { useAuth } from '../context/AuthContext'
 import ProductionLogo from '../components/ProductionLogo'
 import MovieCard from '../components/MovieCard'
+import SaveToListModal from '../components/SaveToListModal'
 
 const CARDS_PER_ROW = 5
 
@@ -179,8 +180,8 @@ function MovieHero({ movie, onBack, myList }) {
           type="button"
           onClick={myList.onToggle}
           disabled={myList.busy}
-          title={myList.inList ? 'Remove from my list' : 'Save to my list'}
-          aria-label={myList.inList ? 'Remove from my list' : 'Save to my list'}
+          title={myList.inList ? 'Save to another list' : 'Save to list'}
+          aria-label={myList.inList ? 'Save to another list' : 'Save to list'}
           className={`absolute top-16 right-4 md:top-20 md:right-12 z-20 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border backdrop-blur-sm transition-colors disabled:opacity-50 ${
             myList.inList
               ? 'border-yellow-400/55 bg-yellow-400/15 text-yellow-400 hover:bg-yellow-400/25'
@@ -262,7 +263,8 @@ export default function MovieDetailPage() {
   const [playing, setPlaying] = useState(false)
   const [adBlockEnabled, setAdBlockEnabled] = useState(true)
   const [inMyList, setInMyList] = useState(false)
-  const [myListBusy, setMyListBusy] = useState(false)
+  const myListBusy = false
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [flagBusy, setFlagBusy] = useState(false)
   const [related, setRelated] = useState([])
   const [relPage, setRelPage] = useState(1)
@@ -382,29 +384,7 @@ export default function MovieDetailPage() {
 
   const toggleMyList = async () => {
     if (!user || myListBusy) return
-    setMyListBusy(true)
-    try {
-      if (inMyList) {
-        const r = await apiFetch(`my-list/${movie.tmdbId}`, { method: 'DELETE' })
-        if (r?.ok) setInMyList(false)
-      } else {
-        const r = await apiFetch('my-list', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tmdbId: movie.tmdbId,
-            mediaType: 'movie',
-            title: movie.title,
-            posterUrl: movie.posterUrl || '',
-          }),
-        })
-        if (r?.ok) setInMyList(true)
-      }
-    } catch {
-      /* ignore */
-    } finally {
-      setMyListBusy(false)
-    }
+    setSaveModalOpen(true)
   }
 
   const TOKEN_KEY = 'moviesbox_token'
@@ -510,6 +490,13 @@ export default function MovieDetailPage() {
             ? { inList: inMyList, busy: myListBusy, onToggle: toggleMyList }
             : null
         }
+      />
+
+      <SaveToListModal
+        open={saveModalOpen}
+        item={{ tmdbId: movie.tmdbId, mediaType: 'movie', title: movie.title || '', posterUrl: movie.posterUrl || '' }}
+        onClose={() => setSaveModalOpen(false)}
+        onSaved={() => setInMyList(true)}
       />
 
       <div className="px-4 md:px-12 mt-4 space-y-8 md:space-y-12">

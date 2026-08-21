@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { BookmarkCheck, BookmarkPlus, Star } from 'lucide-react'
 import { apiFetch } from '../utils/apiFetch'
 import { useAuth } from '../context/AuthContext'
+import SaveToListModal from './SaveToListModal'
 
 const savedCache = new Map()
 
@@ -20,7 +21,7 @@ export default function TVShowCard({
   const id = show.id
   const year = (show.firstAirDate || '').slice(0, 4) || null
   const [saved, setSaved] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [pulse, setPulse] = useState(false)
   const pulseTimerRef = useRef(null)
 
@@ -32,7 +33,7 @@ export default function TVShowCard({
 
   useEffect(() => {
     setSaved(false)
-    setSaving(false)
+    setSaveModalOpen(false)
     return () => {
       if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
     }
@@ -41,7 +42,6 @@ export default function TVShowCard({
   useEffect(() => {
     if (!showSaveButton) {
       setSaved(false)
-      setSaving(false)
       return undefined
     }
 
@@ -72,32 +72,17 @@ export default function TVShowCard({
     }
   }, [showSaveButton, user?.id, id])
 
-  const saveToMyList = async (e) => {
+  const openSaveModal = (e) => {
     e.stopPropagation()
-    if (!showSaveButton || !user || !id || saving || saved) return
-    setSaving(true)
-    try {
-      const res = await apiFetch('my-list', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tmdbId: Number(id),
-          mediaType: 'tv',
-          title: show.name || '',
-          posterUrl: poster || '',
-        }),
-      })
-      if (res?.ok) {
-        const cacheKey = user?.id ? `${user.id}:${id}` : null
-        if (cacheKey) savedCache.set(cacheKey, true)
-        setSaved(true)
-        triggerPulse()
-      }
-    } catch {
-      // ignore
-    } finally {
-      setSaving(false)
-    }
+    if (!showSaveButton || !user || !id) return
+    setSaveModalOpen(true)
+  }
+
+  const markSaved = () => {
+    const cacheKey = user?.id ? `${user.id}:${id}` : null
+    if (cacheKey) savedCache.set(cacheKey, true)
+    setSaved(true)
+    triggerPulse()
   }
 
   return (
@@ -112,15 +97,14 @@ export default function TVShowCard({
         {showSaveButton && user ? (
           <button
             type="button"
-            onClick={saveToMyList}
-            disabled={saving || saved}
+            onClick={openSaveModal}
             className={`absolute top-2 right-2 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border backdrop-blur-sm transition-all ${
               saved
                 ? 'border-yellow-400/40 bg-yellow-400/15 text-yellow-400'
                 : 'border-white/15 bg-black/60 text-gray-200 hover:border-yellow-400/40 hover:text-white'
-            } ${saving ? 'cursor-not-allowed opacity-60' : ''}`}
-            aria-label={saved ? 'Saved to my list' : 'Save to my list'}
-            title={saved ? 'Saved' : 'Save'}
+            }`}
+            aria-label={saved ? 'Save to another list' : 'Save to list'}
+            title={saved ? 'Save to another list' : 'Save'}
           >
             {saved ? <BookmarkCheck className="h-4 w-4" /> : <BookmarkPlus className="h-4 w-4" />}
           </button>
@@ -162,6 +146,12 @@ export default function TVShowCard({
           </div>
         </div>
       </div>
+      <SaveToListModal
+        open={saveModalOpen}
+        item={{ tmdbId: Number(id), mediaType: 'tv', title: show.name || '', posterUrl: poster || '' }}
+        onClose={() => setSaveModalOpen(false)}
+        onSaved={markSaved}
+      />
     </div>
   )
 }

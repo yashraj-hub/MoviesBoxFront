@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { BookmarkCheck, BookmarkPlus, Clock, Star } from 'lucide-react'
 import { apiFetch } from '../utils/apiFetch'
 import { useAuth } from '../context/AuthContext'
+import SaveToListModal from './SaveToListModal'
 
 const savedCache = new Map()
 
@@ -12,7 +13,7 @@ export default function MovieCard({ movie, showTitle }) {
   const poster = movie.posterPath || movie.posterUrl || null
   const id = movie.tmdbId || movie.id
   const [saved, setSaved] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [extra, setExtra] = useState(null)
   const [pulse, setPulse] = useState(false)
   const prefetchRef = useRef(null)
@@ -21,7 +22,7 @@ export default function MovieCard({ movie, showTitle }) {
 
   useEffect(() => {
     setSaved(false)
-    setSaving(false)
+    setSaveModalOpen(false)
     setExtra(null)
     setPulse(false)
   }, [id])
@@ -110,31 +111,17 @@ export default function MovieCard({ movie, showTitle }) {
     prefetchRef.current = null
   }
 
-  const saveToMyList = async (e) => {
+  const openSaveModal = (e) => {
     e.stopPropagation()
-    if (!user || !id || saving || saved) return
-    setSaving(true)
-    try {
-      const r = await apiFetch('my-list', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tmdbId: Number(id),
-          mediaType: 'movie',
-          title: movie.title || '',
-          posterUrl: poster || '',
-        }),
-      })
-      if (r?.ok) {
-        const cacheKey = user?.id ? `${user.id}:${id}` : null
-        if (cacheKey) savedCache.set(cacheKey, true)
-        setSaved(true)
-        triggerPulse()
-      }
-    } catch (_) {}
-    finally {
-      setSaving(false)
-    }
+    if (!user || !id) return
+    setSaveModalOpen(true)
+  }
+
+  const markSaved = () => {
+    const cacheKey = user?.id ? `${user.id}:${id}` : null
+    if (cacheKey) savedCache.set(cacheKey, true)
+    setSaved(true)
+    triggerPulse()
   }
 
   return (
@@ -155,15 +142,14 @@ export default function MovieCard({ movie, showTitle }) {
         {user ? (
           <button
             type="button"
-            onClick={saveToMyList}
-            disabled={saving || saved}
+            onClick={openSaveModal}
             className={`absolute top-2 right-2 z-10 w-8 h-8 rounded-full border backdrop-blur-sm transition-all flex items-center justify-center ${
               saved
                 ? 'bg-yellow-400/15 border-yellow-400/40 text-yellow-400'
                 : 'bg-black/60 border-white/15 text-gray-200 hover:text-white hover:border-yellow-400/40'
-            } ${saving ? 'opacity-60 cursor-not-allowed' : ''}`}
-            aria-label={saved ? 'Saved to my list' : 'Save to my list'}
-            title={saved ? 'Saved' : 'Save'}
+            }`}
+            aria-label={saved ? 'Save to another list' : 'Save to list'}
+            title={saved ? 'Save to another list' : 'Save'}
           >
             {saved ? <BookmarkCheck className="w-4 h-4" /> : <BookmarkPlus className="w-4 h-4" />}
           </button>
@@ -204,6 +190,12 @@ export default function MovieCard({ movie, showTitle }) {
           {movie.title}
         </p>
       )}
+      <SaveToListModal
+        open={saveModalOpen}
+        item={{ tmdbId: Number(id), mediaType: 'movie', title: movie.title || '', posterUrl: poster || '' }}
+        onClose={() => setSaveModalOpen(false)}
+        onSaved={markSaved}
+      />
     </div>
   )
 }

@@ -762,8 +762,8 @@ function UserDetailPanel({ user: initialUser, onClose, onForceLogout, onUpdateSt
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                 {myList.slice(0, 12).map((m) => (
                   <div
-                    key={m.tmdbId}
-                    onClick={() => onNavigateMovie(m.tmdbId)}
+                    key={`${m.mediaType || 'movie'}-${m.tmdbId}`}
+                    onClick={() => onNavigateMovie(m.tmdbId, m.mediaType || 'movie')}
                     className="rounded-lg overflow-hidden border border-white/10 bg-white/5 cursor-pointer hover:border-yellow-400/40 transition-all"
                   >
                     {m.posterUrl ? (
@@ -1180,7 +1180,7 @@ export default function AdminUsersPage() {
           onUpdateTracking={updateTracking}
           onUpdateCanFlag={updateCanFlag}
           onDelete={deleteUser}
-          onNavigateMovie={(tmdbId) => { setSelectedUserId(null); navigate(`/movie/${tmdbId}`) }}
+          onNavigateMovie={(tmdbId, mediaType = 'movie') => { setSelectedUserId(null); navigate(mediaType === 'tv' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`) }}
         />
       )}
     </div>

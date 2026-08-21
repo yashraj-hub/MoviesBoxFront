@@ -3,6 +3,7 @@ import { Component, useEffect, useCallback } from 'react'
 import CustomCursor from './components/CustomCursor'
 import Navbar from './components/Navbar'
 import Loader from './components/Loader'
+import ServerWakeNotice from './components/ServerWakeNotice'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import AuthPage from './pages/AuthPage'
 import BollywoodPage from './pages/BollywoodPage'
@@ -12,8 +13,6 @@ import SearchPage from './pages/SearchPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import MovieDetailPage from './pages/MovieDetailPage'
 import ProductionHousePage from './pages/ProductionHousePage'
-import UniversesPage from './pages/UniversesPage'
-import UniversePage from './pages/UniversePage'
 import GenrePage from './pages/GenrePage'
 import PersonMoviesPage from './pages/PersonMoviesPage'
 import CompanyMoviesPage from './pages/CompanyMoviesPage'
@@ -23,6 +22,7 @@ import TVShowsPage from './pages/TVShowsPage'
 import TVGenrePage from './pages/TVGenrePage'
 import TVShelfPage from './pages/TVShelfPage'
 import TVPlayerPage from './pages/TVPlayerPage'
+import AnimationCategoryPage from './pages/AnimationCategoryPage'
 import { markSearchOpened } from './searchFocusFlags'
 import SiteActiveTracker from './components/SiteActiveTracker'
 
@@ -42,6 +42,7 @@ function App() {
       <AuthProvider>
         <CustomCursor />
         <BrowserRouter>
+          <ServerWakeNotice />
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route element={<ProtectedRoute />}>
@@ -54,8 +55,6 @@ function App() {
                 <Route path="/admin" element={<AdminUsersPage />} />
                 <Route path="/movie/:tmdbId" element={<MovieDetailPage />} />
                 <Route path="/production-house/:category/:companyId" element={<ProductionHousePage />} />
-                <Route path="/universes" element={<UniversesPage />} />
-                <Route path="/universes/:universeKey" element={<UniversePage />} />
                 <Route path="/genre" element={<GenrePage />} />
                 <Route path="/person" element={<PersonMoviesPage />} />
                 <Route path="/company" element={<CompanyMoviesPage />} />
@@ -65,6 +64,7 @@ function App() {
                 <Route path="/tv-genre" element={<TVGenrePage />} />
                 <Route path="/tv-shelf/:shelfKey" element={<TVShelfPage />} />
                 <Route path="/tv/:tmdbId" element={<TVPlayerPage />} />
+                <Route path="/animation-category" element={<AnimationCategoryPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

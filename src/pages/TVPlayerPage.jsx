@@ -7,6 +7,7 @@ import TVShowCard from '../components/TVShowCard'
 import { apiFetch } from '../utils/apiFetch'
 import { useAuth } from '../context/AuthContext'
 import { buildTVPlayerUrl } from '../config/tvPlayer'
+import SaveToListModal from '../components/SaveToListModal'
 
 function toSeasonLabel(n) {
   if (!n && n !== 0) return ''
@@ -94,7 +95,8 @@ export default function TVPlayerPage() {
   const [related, setRelated] = useState([])
   const [relLoading, setRelLoading] = useState(false)
   const [inMyList, setInMyList] = useState(false)
-  const [myListBusy, setMyListBusy] = useState(false)
+  const myListBusy = false
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [adBlockEnabled, setAdBlockEnabled] = useState(true)
   const [seasonDropdownOpen, setSeasonDropdownOpen] = useState(false)
 
@@ -269,20 +271,7 @@ export default function TVPlayerPage() {
 
   const toggleMyList = async () => {
     if (!user || myListBusy || !show) return
-    setMyListBusy(true)
-    try {
-      if (inMyList) {
-        const r = await apiFetch(`my-list/${show.id}?mediaType=tv`, { method: 'DELETE' })
-        if (r?.ok) setInMyList(false)
-      } else {
-        const r = await apiFetch('my-list', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tmdbId: Number(show.id), mediaType: 'tv', title: show.name || '', posterUrl: show.posterUrl || '' }),
-        })
-        if (r?.ok) setInMyList(true)
-      }
-    } catch {} finally { setMyListBusy(false) }
+    setSaveModalOpen(true)
   }
 
   if (loading && !show) return <Loader />
@@ -327,6 +316,13 @@ export default function TVPlayerPage() {
             {inMyList ? <BookmarkCheck className="h-4 w-4" /> : <BookmarkPlus className="h-4 w-4" />}
           </button>
         )}
+
+        <SaveToListModal
+          open={saveModalOpen}
+          item={{ tmdbId: Number(show.id), mediaType: 'tv', title: show.name || '', posterUrl: show.posterUrl || '' }}
+          onClose={() => setSaveModalOpen(false)}
+          onSaved={() => setInMyList(true)}
+        />
 
         {/* Show title bottom-left */}
         <div className="absolute bottom-4 left-4 md:left-8 z-10">
